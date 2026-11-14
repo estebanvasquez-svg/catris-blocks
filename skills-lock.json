@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "skills": {
+    "build-game-audio-feedback": {
+      "source": "MengTo/Skills",
+      "sourceType": "github",
+      "skillPath": "agent-skills/game-development/build-game-audio-feedback/SKILL.md",
+      "computedHash": "80fad632da978194758698c9f8e75ad0c8d45bf3a7ba267fcd75e30f7a1c1391"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "7bc223e2aafbdbf6e50ea243ba6ef67fe432bb069ab439fea0390795dac0bf7f"
+    },
+    "mobile-game-dev": {
+      "source": "omer-metin/skills-for-antigravity",
+      "sourceType": "github",
+      "skillPath": "skills/mobile-game-dev/SKILL.md",
+      "computedHash": "7351d5be70f07156e704d55d80cd171c0433d868d6e0abb5278a2f47d2316a48"
+    },
+    "safe-area-handling": {
+      "source": "Cap-go/capgo-skills",
+      "sourceType": "github",
+      "skillPath": "skills/safe-area-handling/SKILL.md",
+      "computedHash": "03cd4254a565c8d149d7cb9aba7dbc4ebd4e9322b4bbdedbebd011ad0f15a8b2"
+    }
+  }
+}

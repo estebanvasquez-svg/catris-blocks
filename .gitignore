@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
+ios/App/Pods/
+ios/App/build/
