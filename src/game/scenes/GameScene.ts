@@ -696,20 +696,46 @@ export class GameScene extends Phaser.Scene {
     this.spawnPopMiauEffects(fullRows, firstRowY, gained);
     this.renderAll();
 
-    this.time.delayedCall(340, () => {
-      // Remove cleared rows & drop rows above
-      const remaining = this.grid.filter((_, idx) => !fullRows.includes(idx));
+    this.time.delayedCall(260, () => {
+      // Compute new collapsed grid and how many rows each surviving cat drops
+      const remaining: (CatColor | null)[][] = [];
+      const dropRowsPerSurvivingRow: number[] = [];
+
+      for (let r = 0; r < BOARD_ROWS; r++) {
+        if (fullRows.includes(r)) continue;
+        const dropCount = fullRows.filter((fr) => fr > r).length;
+        remaining.push(this.grid[r]);
+        dropRowsPerSurvivingRow.push(dropCount);
+      }
+
+      const emptyRowsNeeded = BOARD_ROWS - remaining.length;
+      const dropDistances: number[][] = Array.from({ length: BOARD_ROWS }, () =>
+        Array<number>(BOARD_COLS).fill(0)
+      );
+
+      for (let i = 0; i < remaining.length; i++) {
+        const newR = emptyRowsNeeded + i;
+        dropDistances[newR].fill(dropRowsPerSurvivingRow[i]);
+      }
+
       while (remaining.length < BOARD_ROWS) {
         remaining.unshift(Array<CatColor | null>(BOARD_COLS).fill(null));
       }
-      this.grid = remaining;
-      this.isClearing = false;
 
-      if (this.linesCleared >= this.levelConfig.targetLines) {
-        this.handleVictory();
-      } else {
-        this.spawnPiece();
-      }
+      this.grid = remaining;
+      this.renderAll(dropDistances);
+
+      const maxDrop = Math.max(0, ...dropRowsPerSurvivingRow);
+      const fallDuration = maxDrop > 0 ? 240 + maxDrop * 45 + BOARD_COLS * 12 : 40;
+
+      this.time.delayedCall(fallDuration, () => {
+        this.isClearing = false;
+        if (this.linesCleared >= this.levelConfig.targetLines) {
+          this.handleVictory();
+        } else {
+          this.spawnPiece();
+        }
+      });
     });
   }
 
@@ -805,7 +831,7 @@ export class GameScene extends Phaser.Scene {
     return r;
   }
 
-  private renderAll(): void {
+  private renderAll(dropDistances?: number[][]): void {
     this.scoreText.setText(String(this.score));
     this.linesText.setText(`${Math.min(this.linesCleared, this.levelConfig.targetLines)}/${this.levelConfig.targetLines}`);
 
@@ -821,10 +847,23 @@ export class GameScene extends Phaser.Scene {
         if (!color) continue;
         const cx = this.boardX + c * this.cellSize + this.cellSize / 2;
         const cy = this.boardY + r * this.cellSize + this.cellSize / 2;
+        const drop = dropDistances?.[r]?.[c] ?? 0;
+        const startY = drop > 0 ? cy - drop * this.cellSize : cy;
+
         const sprite = this.add
-          .image(cx, cy, `cat_${color}`)
+          .image(cx, startY, `cat_${color}`)
           .setDisplaySize(this.cellSize + 3, this.cellSize + 3);
         this.cellsLayer.add(sprite);
+
+        if (drop > 0) {
+          this.tweens.add({
+            targets: sprite,
+            y: cy,
+            duration: 210 + drop * 45,
+            delay: c * 12,
+            ease: 'Bounce.easeOut',
+          });
+        }
       }
     }
 
