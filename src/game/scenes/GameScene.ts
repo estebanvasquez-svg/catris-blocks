@@ -337,27 +337,27 @@ export class GameScene extends Phaser.Scene {
 
     boardZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       sound.unlock();
-      this.dragStartX = pointer.x;
-      this.dragStartY = pointer.y;
+      this.dragStartX = pointer.worldX;
+      this.dragStartY = pointer.worldY;
       this.dragStartTime = this.time.now;
-      this.lastStepX = pointer.x;
-      this.lastStepY = pointer.y;
+      this.lastStepX = pointer.worldX;
+      this.lastStepY = pointer.worldY;
       this.isBoardDragging = true;
     });
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (!this.isBoardDragging || !pointer.isDown || this.isPaused || this.isGameOver) return;
-      const dx = pointer.x - this.lastStepX;
-      const dy = pointer.y - this.lastStepY;
+      const dx = pointer.worldX - this.lastStepX;
+      const dy = pointer.worldY - this.lastStepY;
 
       if (Math.abs(dx) >= this.cellSize * 0.8) {
         const dir = dx > 0 ? 1 : -1;
         this.moveHorizontal(dir);
-        this.lastStepX = pointer.x;
+        this.lastStepX = pointer.worldX;
       }
       if (dy >= this.cellSize * 0.85) {
         this.softDrop();
-        this.lastStepY = pointer.y;
+        this.lastStepY = pointer.worldY;
       }
     });
 
@@ -366,8 +366,8 @@ export class GameScene extends Phaser.Scene {
       this.isBoardDragging = false;
       if (this.isPaused || this.isGameOver) return;
 
-      const totalDx = pointer.x - this.dragStartX;
-      const totalDy = pointer.y - this.dragStartY;
+      const totalDx = pointer.worldX - this.dragStartX;
+      const totalDy = pointer.worldY - this.dragStartY;
       const elapsed = this.time.now - this.dragStartTime;
 
       // Tap -> Rotate
