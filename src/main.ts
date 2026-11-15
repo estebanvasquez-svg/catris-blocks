@@ -11,6 +11,7 @@ import { GameScene } from './game/scenes/GameScene';
 import { VictoryScene } from './game/scenes/VictoryScene';
 import { ShopScene } from './game/scenes/ShopScene';
 import { OptionsScene } from './game/scenes/OptionsScene';
+import { CollectionScene } from './game/scenes/CollectionScene';
 
 if (Capacitor.isNativePlatform()) {
   void SystemBars.setStyle({ style: SystemBarsStyle.Dark }).catch(() => {});
@@ -35,6 +36,7 @@ const config: Phaser.Types.Core.GameConfig = {
     VictoryScene,
     ShopScene,
     OptionsScene,
+    CollectionScene,
   ],
 };
 

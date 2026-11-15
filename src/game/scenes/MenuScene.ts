@@ -107,6 +107,22 @@ export class MenuScene extends Phaser.Scene {
       },
     });
 
+    // Collection button (purple)
+    createGlossyButton(this, {
+      x: GAME_WIDTH / 2,
+      y: 632,
+      width: 235,
+      height: 54,
+      label: 'COLECCIÓN',
+      fillColor: 0xb16ef5,
+      topHighlight: 0xe2c7ff,
+      fontSize: 24,
+      onClick: () => {
+        sound.playClick();
+        this.scene.start('CollectionScene');
+      },
+    });
+
     // Peeking orange cat (bottom-left) & blue cat (bottom-right)
     const orangeCat = this.add
       .image(70, GAME_HEIGHT - 44, 'cat_orange_sticker')

@@ -1,16 +1,5 @@
 import Phaser from 'phaser';
-import { CatColor } from '../constants';
-
-const CAT_COLORS: CatColor[] = [
-  'turquoise',
-  'yellow',
-  'orange',
-  'purple',
-  'pink',
-  'blue',
-  'green',
-  'red',
-];
+import { CAT_IDS } from '../constants';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -18,7 +7,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    for (const color of CAT_COLORS) {
+    for (const color of CAT_IDS) {
       this.load.image(`cat_${color}`, `assets/cats/cat_${color}.png`);
       this.load.image(`cat_${color}_sticker`, `assets/cats/cat_${color}_sticker.png`);
     }

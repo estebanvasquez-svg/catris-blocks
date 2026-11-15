@@ -11,6 +11,7 @@ export interface SaveData {
   newlyUnlockedLevel: number | null;
   levelStars: Record<number, number>;
   bestScores: Record<number, number>;
+  collectedCats: Record<string, number>;
   pawsCurrency: number;
   unlockedThemes: string[];
   activeTheme: string;
@@ -24,6 +25,7 @@ const DEFAULT_SAVE: SaveData = {
   newlyUnlockedLevel: 1,
   levelStars: {},
   bestScores: {},
+  collectedCats: {},
   pawsCurrency: 0,
   unlockedThemes: ['navy'],
   activeTheme: 'navy',
@@ -44,6 +46,9 @@ export function loadSave(): SaveData {
     return {
       ...DEFAULT_SAVE,
       ...parsed,
+      collectedCats: {
+        ...(parsed.collectedCats ?? {}),
+      },
       options: {
         ...DEFAULT_SAVE.options,
         ...(parsed.options ?? {}),

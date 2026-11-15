@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, LEVELS } from '../constants';
+import { CAT_MAP, GAME_HEIGHT, GAME_WIDTH, LEVELS } from '../constants';
 import { createGlossyButton, drawGridBackground, drawHudPanel } from '../kawaiiArtwork';
 import { sound } from '../audio';
 
@@ -110,10 +110,23 @@ export class VictoryScene extends Phaser.Scene {
       }
     }
 
-    // 3 Celebrating cats (purple, center party cat, blue)
+    // 3 Celebrating cats (center cat is the level's collected cat!)
+    const lvlCfg = LEVELS.find((l) => l.id === data.levelId) ?? LEVELS[0];
+    const targetCat = CAT_MAP[lvlCfg.targetCat];
     const leftCat = this.add.image(102, 342, 'cat_purple_sticker').setScale(0.38).setAngle(-6);
-    const centerCat = this.add.image(GAME_WIDTH / 2, 332, 'cat_pink_sticker').setScale(0.44);
+    const centerCat = this.add.image(GAME_WIDTH / 2, 332, `cat_${targetCat.id}_sticker`).setScale(0.46);
     const rightCat = this.add.image(GAME_WIDTH - 102, 342, 'cat_blue_sticker').setScale(0.38).setAngle(6);
+
+    this.add
+      .text(GAME_WIDTH / 2, 404, `¡Gato ${targetCat.name} desbloqueado!`, {
+        fontFamily: 'Fredoka, sans-serif',
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color: '#ffe875',
+        stroke: '#1a2750',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5);
 
     // Party hat on center cat
     const hat = this.add.graphics();

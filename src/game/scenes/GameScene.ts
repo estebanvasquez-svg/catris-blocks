@@ -3,6 +3,7 @@ import {
   BOARD_COLS,
   BOARD_ROWS,
   CAT_HEX,
+  CAT_MAP,
   CatColor,
   GAME_HEIGHT,
   GAME_WIDTH,
@@ -11,6 +12,7 @@ import {
   TETROMINOES,
   TETROMINO_TYPES,
   TetrominoType,
+  getUnlockedCatsForLevel,
 } from '../constants';
 import {
   createGlossyButton,
@@ -21,10 +23,13 @@ import {
 import { sound } from '../audio';
 import { loadSave, writeSave } from '../storage';
 
-interface ActivePiece {
+interface PieceTemplate {
   type: TetrominoType;
-  color: CatColor;
   matrix: number[][];
+  colors: (CatColor | null)[][];
+}
+
+interface ActivePiece extends PieceTemplate {
   row: number;
   col: number;
 }
@@ -37,13 +42,15 @@ export class GameScene extends Phaser.Scene {
   private levelConfig!: LevelConfig;
   private grid: (CatColor | null)[][] = [];
   private activePiece: ActivePiece | null = null;
-  private nextType: TetrominoType = 'T';
-  private holdType: TetrominoType | null = null;
+  private nextPiece!: PieceTemplate;
+  private holdPiece: PieceTemplate | null = null;
   private canHold = true;
   private bag: TetrominoType[] = [];
 
   private score = 0;
   private linesCleared = 0;
+  private catsCollected = 0;
+  private piecesSpawned = 0;
   private lives = 3;
   private startTimeMs = 0;
   private dropAccumulator = 0;
@@ -51,10 +58,10 @@ export class GameScene extends Phaser.Scene {
   private isGameOver = false;
   private isClearing = false;
 
-  // Board geometry
-  private readonly cellSize = 36;
-  private readonly boardX = 22;
-  private readonly boardY = 116;
+  // Board geometry (52x52 cat blocks filling full vertical screen!)
+  private readonly cellSize = 52;
+  private readonly boardX = 16;
+  private readonly boardY = 104;
 
   // Graphics layers
   private boardContainer!: Phaser.GameObjects.Container;
@@ -97,11 +104,10 @@ export class GameScene extends Phaser.Scene {
     this.createTopHud();
     this.createBoardFrame();
     this.createSidePanels();
-    this.createTouchControls();
     this.setupKeyboard();
     this.setupBoardGestures();
 
-    this.nextType = this.drawFromBag();
+    this.nextPiece = this.createPieceTemplate(this.drawFromBag());
     this.spawnPiece();
     this.renderAll();
 
@@ -119,10 +125,12 @@ export class GameScene extends Phaser.Scene {
     );
     this.bag = [];
     this.activePiece = null;
-    this.holdType = null;
+    this.holdPiece = null;
     this.canHold = true;
     this.score = 0;
     this.linesCleared = 0;
+    this.catsCollected = 0;
+    this.piecesSpawned = 0;
     this.lives = 3;
     this.startTimeMs = this.time.now;
     this.dropAccumulator = 0;
@@ -167,16 +175,21 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    drawHudPanel(this, 310, 54, 110, 66, 0x3b7be0);
+    const levelColor = CAT_HEX[this.levelConfig.targetCat];
+
+    drawHudPanel(this, 310, 54, 110, 66, levelColor);
     this.add
-      .text(310, 34, 'LINES', {
+      .image(277, 36, `cat_${this.levelConfig.targetCat}`)
+      .setDisplaySize(22, 22);
+    this.add
+      .text(320, 35, 'META', {
         fontFamily: 'Silkscreen, Fredoka, sans-serif',
         fontSize: '13px',
         color: '#ffffff',
       })
       .setOrigin(0.5);
     this.linesText = this.add
-      .text(310, 62, `0/${this.levelConfig.targetLines}`, {
+      .text(310, 62, `0/${this.levelConfig.targetCatCount}`, {
         fontFamily: 'Silkscreen, Fredoka, sans-serif',
         fontSize: '18px',
         color: '#ffffff',
@@ -201,6 +214,7 @@ export class GameScene extends Phaser.Scene {
 
   private createBoardFrame(): void {
     const theme = getActiveTheme();
+    const levelColor = CAT_HEX[this.levelConfig.targetCat];
     const bw = BOARD_COLS * this.cellSize;
     const bh = BOARD_ROWS * this.cellSize;
 
@@ -220,8 +234,8 @@ export class GameScene extends Phaser.Scene {
       frame.lineBetween(this.boardX, gy, this.boardX + bw, gy);
     }
 
-    // Thick rounded sky-blue border
-    frame.lineStyle(7, theme.frameColor, 1);
+    // Thick rounded border matching the level's target cat color
+    frame.lineStyle(7, levelColor, 1);
     frame.strokeRoundedRect(this.boardX - 4, this.boardY - 4, bw + 8, bh + 8, 16);
 
     this.boardContainer = this.add.container(0, 0);
@@ -233,7 +247,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createSidePanels(): void {
-    const rx = 378;
+    const rx = 390;
 
     // NEXT box (matching partida.jpg right side)
     this.add
@@ -245,7 +259,7 @@ export class GameScene extends Phaser.Scene {
         strokeThickness: 4,
       })
       .setOrigin(0.5);
-    drawHudPanel(this, rx, 214, 108, 108, 0x52b6ff);
+    drawHudPanel(this, rx, 214, 92, 102, 0x52b6ff);
     this.nextPreviewLayer = this.add.container(rx, 214);
 
     // HOLD box (tappable!)
@@ -258,109 +272,41 @@ export class GameScene extends Phaser.Scene {
         strokeThickness: 4,
       })
       .setOrigin(0.5);
-    drawHudPanel(this, rx, 374, 108, 108, 0x52b6ff);
+    drawHudPanel(this, rx, 374, 92, 102, 0x52b6ff);
     this.holdPreviewLayer = this.add.container(rx, 374);
 
     const holdHit = this.add
-      .rectangle(rx, 374, 108, 108, 0x000000, 0)
+      .rectangle(rx, 374, 92, 102, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     holdHit.on('pointerdown', () => this.performHold());
 
-    // Cute animated mascot cat & deco on right side
+    // Cute animated mascot cat (the level's target cat!) & deco on right side
     this.add.image(rx - 28, 466, 'deco_paw').setScale(0.75).setAlpha(0.75);
     this.add.image(rx + 28, 474, 'deco_heart').setScale(0.65).setAlpha(0.8);
-    this.mascotCat = this.add.image(rx, 542, 'cat_pink_sticker').setScale(0.32);
+    this.mascotCat = this.add
+      .image(rx, 536, `cat_${this.levelConfig.targetCat}_sticker`)
+      .setScale(0.32);
+    this.add
+      .text(rx, 594, CAT_MAP[this.levelConfig.targetCat].name, {
+        fontFamily: 'Fredoka, sans-serif',
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: '#ffe875',
+        stroke: '#101d3b',
+        strokeThickness: 4,
+        align: 'center',
+        wordWrap: { width: 112 },
+      })
+      .setOrigin(0.5);
     this.tweens.add({
       targets: this.mascotCat,
-      y: 534,
+      y: 528,
       scaleY: 0.34,
       scaleX: 0.305,
       duration: 900,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
-    });
-  }
-
-  private createTouchControls(): void {
-    const opts = loadSave().options;
-    if (!opts.showTouchControls) return;
-
-    const yRow1 = 674;
-    const yRow2 = 744;
-
-    // Left thumb cluster: Left, Down, Right
-    createGlossyButton(this, {
-      x: 56,
-      y: yRow2,
-      width: 68,
-      height: 56,
-      label: '◀',
-      fillColor: 0x3b7be0,
-      topHighlight: 0x8ec5ff,
-      fontSize: 24,
-      onClick: () => this.moveHorizontal(-1),
-    });
-
-    createGlossyButton(this, {
-      x: 132,
-      y: yRow2,
-      width: 68,
-      height: 56,
-      label: '▼',
-      fillColor: 0x3b7be0,
-      topHighlight: 0x8ec5ff,
-      fontSize: 24,
-      onClick: () => this.softDrop(),
-    });
-
-    createGlossyButton(this, {
-      x: 208,
-      y: yRow2,
-      width: 68,
-      height: 56,
-      label: '▶',
-      fillColor: 0x3b7be0,
-      topHighlight: 0x8ec5ff,
-      fontSize: 24,
-      onClick: () => this.moveHorizontal(1),
-    });
-
-    // Right thumb cluster: Rotate, Hard Drop, Hold
-    createGlossyButton(this, {
-      x: 382,
-      y: yRow1,
-      width: 102,
-      height: 56,
-      label: '↻ ROT',
-      fillColor: 0xffcf33,
-      topHighlight: 0xfff5a8,
-      fontSize: 19,
-      onClick: () => this.rotatePiece(),
-    });
-
-    createGlossyButton(this, {
-      x: 314,
-      y: yRow2,
-      width: 92,
-      height: 56,
-      label: 'HOLD',
-      fillColor: 0xff6b9e,
-      topHighlight: 0xffc4d9,
-      fontSize: 18,
-      onClick: () => this.performHold(),
-    });
-
-    createGlossyButton(this, {
-      x: 406,
-      y: yRow2,
-      width: 72,
-      height: 56,
-      label: '⤓',
-      fillColor: 0x5cd65c,
-      topHighlight: 0xbef7be,
-      fontSize: 26,
-      onClick: () => this.hardDrop(),
     });
   }
 
@@ -455,20 +401,52 @@ export class GameScene extends Phaser.Scene {
     return this.bag.pop()!;
   }
 
-  private spawnPiece(forcedType?: TetrominoType): void {
-    const type = forcedType ?? this.nextType;
-    if (!forcedType) {
-      this.nextType = this.drawFromBag();
+  private pickCatForLevel(allowNewCat: boolean): CatColor {
+    const pool = getUnlockedCatsForLevel(this.levelConfig.id);
+    const previousCats = pool.filter((c) => c !== this.levelConfig.targetCat);
+
+    // At the start of each level (after level 1), spawn only previous species first
+    if (!allowNewCat && previousCats.length > 0) {
+      return previousCats[Math.floor(Math.random() * previousCats.length)];
     }
+
+    // Normal, non-abundant spawn rate for the new/target cat
+    // Uniform 1/N for N <= 12, and gentle 8% floor for larger pools (13..59)
+    const targetChance = Math.max(1 / pool.length, 0.08);
+    if (Math.random() < targetChance) {
+      return this.levelConfig.targetCat;
+    }
+    const others = previousCats.length > 0 ? previousCats : pool;
+    return others[Math.floor(Math.random() * others.length)];
+  }
+
+  private createPieceTemplate(type: TetrominoType): PieceTemplate {
     const def = TETROMINOES[type];
     const matrix = def.matrix.map((r) => [...r]);
+    // First 3 pieces of the level (after level 1) only use previous cat species; then the new cat appears
+    const allowNewCat = this.levelConfig.id === 1 || this.piecesSpawned >= 3;
+    this.piecesSpawned++;
+    // Every single 1x1 block gets an individual cat design from the level's species pool
+    const colors: (CatColor | null)[][] = matrix.map((r) =>
+      r.map((cell) => (cell ? this.pickCatForLevel(allowNewCat) : null))
+    );
+    return { type, matrix, colors };
+  }
+
+  private spawnPiece(forcedTemplate?: PieceTemplate): void {
+    const template = forcedTemplate ?? this.nextPiece;
+    if (!forcedTemplate) {
+      this.nextPiece = this.createPieceTemplate(this.drawFromBag());
+    }
+    const matrix = template.matrix.map((r) => [...r]);
+    const colors = template.colors.map((r) => [...r]);
     const col = Math.floor((BOARD_COLS - matrix[0].length) / 2);
     const row = 0;
 
     this.activePiece = {
-      type,
-      color: def.color,
+      type: template.type,
       matrix,
+      colors,
       row,
       col,
     };
@@ -562,11 +540,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     const m = this.activePiece.matrix;
+    const colM = this.activePiece.colors;
     const N = m.length;
     const rotated = Array.from({ length: N }, () => Array<number>(N).fill(0));
+    const rotatedColors = Array.from({ length: N }, () => Array<CatColor | null>(N).fill(null));
     for (let r = 0; r < N; r++) {
       for (let c = 0; c < N; c++) {
         rotated[c][N - 1 - r] = m[r][c];
+        rotatedColors[c][N - 1 - r] = colM[r][c];
       }
     }
 
@@ -574,6 +555,7 @@ export class GameScene extends Phaser.Scene {
     for (const dx of kicks) {
       if (this.isValidPosition(rotated, this.activePiece.row, this.activePiece.col + dx)) {
         this.activePiece.matrix = rotated;
+        this.activePiece.colors = rotatedColors;
         this.activePiece.col += dx;
         sound.playRotate();
         this.renderAll();
@@ -599,16 +581,20 @@ export class GameScene extends Phaser.Scene {
     if (!this.activePiece || !this.canHold || this.isPaused || this.isGameOver || this.isClearing) {
       return;
     }
-    const currentType = this.activePiece.type;
+    const currentTemplate: PieceTemplate = {
+      type: this.activePiece.type,
+      matrix: this.activePiece.matrix.map((r) => [...r]),
+      colors: this.activePiece.colors.map((r) => [...r]),
+    };
     sound.playHold();
 
-    if (this.holdType === null) {
-      this.holdType = currentType;
+    if (this.holdPiece === null) {
+      this.holdPiece = currentTemplate;
       this.spawnPiece();
     } else {
-      const swapType = this.holdType;
-      this.holdType = currentType;
-      this.spawnPiece(swapType);
+      const swapTemplate = this.holdPiece;
+      this.holdPiece = currentTemplate;
+      this.spawnPiece(swapTemplate);
     }
     this.canHold = false;
     this.renderAll();
@@ -616,14 +602,14 @@ export class GameScene extends Phaser.Scene {
 
   private lockPiece(): void {
     if (!this.activePiece) return;
-    const { matrix, row, col, color } = this.activePiece;
+    const { matrix, row, col, colors } = this.activePiece;
     for (let r = 0; r < matrix.length; r++) {
       for (let c = 0; c < matrix[r].length; c++) {
         if (!matrix[r][c]) continue;
         const gr = row + r;
         const gc = col + c;
         if (gr >= 0 && gr < BOARD_ROWS && gc >= 0 && gc < BOARD_COLS) {
-          this.grid[gr][gc] = color;
+          this.grid[gr][gc] = colors[r][c] ?? this.levelConfig.targetCat;
           const sx = this.boardX + gc * this.cellSize + this.cellSize / 2;
           const sy = this.boardY + gr * this.cellSize + this.cellSize / 2;
           const puff = this.add.image(sx, sy, 'deco_sparkle').setScale(0.45).setAlpha(0.85);
@@ -661,9 +647,25 @@ export class GameScene extends Phaser.Scene {
     this.comboCount++;
     const count = fullRows.length;
     const lineScores = [0, 100, 300, 500, 800];
-    const gained = (lineScores[count] ?? count * 250) * this.levelConfig.id * Math.min(3, this.comboCount);
+    const gained = (lineScores[count] ?? count * 250) * Math.min(8, this.levelConfig.id) * Math.min(3, this.comboCount);
     this.score += gained;
     this.linesCleared += count;
+
+    // Count cleared cats for collection & level target
+    let targetHits = 0;
+    const save = loadSave();
+    for (const r of fullRows) {
+      for (let c = 0; c < BOARD_COLS; c++) {
+        const cellCat = this.grid[r][c];
+        if (!cellCat) continue;
+        save.collectedCats[cellCat] = (save.collectedCats[cellCat] ?? 0) + 1;
+        if (cellCat === this.levelConfig.targetCat) {
+          targetHits++;
+        }
+      }
+    }
+    writeSave(save);
+    this.catsCollected += targetHits;
 
     // Score HUD pop animation
     this.tweens.add({
@@ -730,7 +732,7 @@ export class GameScene extends Phaser.Scene {
 
       this.time.delayedCall(fallDuration, () => {
         this.isClearing = false;
-        if (this.linesCleared >= this.levelConfig.targetLines) {
+        if (this.catsCollected >= this.levelConfig.targetCatCount) {
           this.handleVictory();
         } else {
           this.spawnPiece();
@@ -833,7 +835,7 @@ export class GameScene extends Phaser.Scene {
 
   private renderAll(dropDistances?: number[][]): void {
     this.scoreText.setText(String(this.score));
-    this.linesText.setText(`${Math.min(this.linesCleared, this.levelConfig.targetLines)}/${this.levelConfig.targetLines}`);
+    this.linesText.setText(`${Math.min(this.catsCollected, this.levelConfig.targetCatCount)}/${this.levelConfig.targetCatCount}`);
 
     this.trailGraphics.clear();
     this.ghostGraphics.clear();
@@ -869,7 +871,7 @@ export class GameScene extends Phaser.Scene {
 
     // 2. Ghost piece + Falling piece + vertical motion trails
     if (this.activePiece) {
-      const { matrix, row, col, color } = this.activePiece;
+      const { matrix, colors, row, col } = this.activePiece;
       const showGhost = loadSave().options.ghostPiece;
       const ghostRow = this.getGhostRow();
 
@@ -887,14 +889,15 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      // Vertical speed trails above active piece (matching partida.jpg)
-      this.trailGraphics.fillStyle(CAT_HEX[color], 0.22);
+      // Vertical speed trails above active piece
       for (let r = 0; r < matrix.length; r++) {
         for (let c = 0; c < matrix[r].length; c++) {
           if (!matrix[r][c]) continue;
+          const cellColor = colors[r][c] ?? this.levelConfig.targetCat;
           const tx = this.boardX + (col + c) * this.cellSize + 6;
           const ty = this.boardY + (row + r) * this.cellSize - 26;
           if (ty >= this.boardY) {
+            this.trailGraphics.fillStyle(CAT_HEX[cellColor], 0.22);
             this.trailGraphics.fillRoundedRect(tx, ty, this.cellSize - 12, 30, 8);
           }
         }
@@ -903,10 +906,11 @@ export class GameScene extends Phaser.Scene {
       for (let r = 0; r < matrix.length; r++) {
         for (let c = 0; c < matrix[r].length; c++) {
           if (!matrix[r][c]) continue;
+          const cellColor = colors[r][c] ?? this.levelConfig.targetCat;
           const px = this.boardX + (col + c) * this.cellSize + this.cellSize / 2;
           const py = this.boardY + (row + r) * this.cellSize + this.cellSize / 2;
           const sprite = this.add
-            .image(px, py, `cat_${color}`)
+            .image(px, py, `cat_${cellColor}`)
             .setDisplaySize(this.cellSize + 3, this.cellSize + 3);
           this.activeLayer.add(sprite);
         }
@@ -914,18 +918,18 @@ export class GameScene extends Phaser.Scene {
     }
 
     // 3. NEXT & HOLD previews
-    this.renderMiniPiece(this.nextPreviewLayer, this.nextType);
-    if (this.holdType) {
-      this.renderMiniPiece(this.holdPreviewLayer, this.holdType);
+    this.renderMiniPiece(this.nextPreviewLayer, this.nextPiece);
+    if (this.holdPiece) {
+      this.renderMiniPiece(this.holdPreviewLayer, this.holdPiece);
     } else {
       this.holdPreviewLayer.removeAll(true);
     }
   }
 
-  private renderMiniPiece(container: Phaser.GameObjects.Container, type: TetrominoType): void {
+  private renderMiniPiece(container: Phaser.GameObjects.Container, template: PieceTemplate): void {
     container.removeAll(true);
-    const def = TETROMINOES[type];
-    const m = def.matrix;
+    const m = template.matrix;
+    const colors = template.colors;
     const miniSize = 23;
 
     // Bounding box of active cells for clean centering
@@ -946,10 +950,11 @@ export class GameScene extends Phaser.Scene {
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
         if (!m[r][c]) continue;
+        const cellColor = colors[r][c] ?? this.levelConfig.targetCat;
         const x = (c - minC) * miniSize - w / 2 + miniSize / 2;
         const y = (r - minR) * miniSize - h / 2 + miniSize / 2;
         const cat = this.add
-          .image(x, y, `cat_${def.color}`)
+          .image(x, y, `cat_${cellColor}`)
           .setDisplaySize(miniSize + 2, miniSize + 2);
         container.add(cat);
       }
@@ -965,6 +970,10 @@ export class GameScene extends Phaser.Scene {
     const save = loadSave();
     save.levelStars[this.levelConfig.id] = Math.max(save.levelStars[this.levelConfig.id] ?? 0, stars);
     save.bestScores[this.levelConfig.id] = Math.max(save.bestScores[this.levelConfig.id] ?? 0, this.score);
+    save.collectedCats[this.levelConfig.targetCat] = Math.max(
+      save.collectedCats[this.levelConfig.targetCat] ?? 0,
+      this.catsCollected
+    );
     save.pawsCurrency += stars + 1;
 
     if (this.levelConfig.id >= save.unlockedLevel && this.levelConfig.id < LEVELS.length) {
