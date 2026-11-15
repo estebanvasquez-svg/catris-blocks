@@ -233,7 +233,7 @@ export class LevelSelectScene extends Phaser.Scene {
           const sy = cy - 36;
           const star = this.add
             .image(sx, sy, 'deco_star')
-            .setScale(0.55)
+            .setScale(0.1375)
             .setTint(s < stars ? 0xffffff : 0x3f5380);
           this.gridContainer.add(star);
         }

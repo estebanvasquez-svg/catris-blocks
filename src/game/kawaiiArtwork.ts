@@ -31,14 +31,14 @@ export function drawGridBackground(
 
   if (withDecorations) {
     const decoPositions = [
-      { key: 'deco_star', x: 36, y: 74, scale: 0.7, alpha: 0.7 },
-      { key: 'deco_heart', x: 412, y: 92, scale: 0.75, alpha: 0.75 },
-      { key: 'deco_paw', x: 48, y: 210, scale: 0.65, alpha: 0.55 },
-      { key: 'deco_sparkle', x: 405, y: 245, scale: 0.8, alpha: 0.7 },
-      { key: 'deco_heart', x: 34, y: 540, scale: 0.65, alpha: 0.6 },
-      { key: 'deco_paw', x: 418, y: 590, scale: 0.7, alpha: 0.55 },
-      { key: 'deco_star', x: 398, y: 745, scale: 0.65, alpha: 0.7 },
-      { key: 'deco_sparkle', x: 52, y: 735, scale: 0.7, alpha: 0.6 },
+      { key: 'deco_star', x: 36, y: 74, scale: 0.175, alpha: 0.7 },
+      { key: 'deco_heart', x: 412, y: 92, scale: 0.1875, alpha: 0.75 },
+      { key: 'deco_paw', x: 48, y: 210, scale: 0.1625, alpha: 0.55 },
+      { key: 'deco_sparkle', x: 405, y: 245, scale: 0.2, alpha: 0.7 },
+      { key: 'deco_heart', x: 34, y: 540, scale: 0.1625, alpha: 0.6 },
+      { key: 'deco_paw', x: 418, y: 590, scale: 0.175, alpha: 0.55 },
+      { key: 'deco_star', x: 398, y: 745, scale: 0.1625, alpha: 0.7 },
+      { key: 'deco_sparkle', x: 52, y: 735, scale: 0.175, alpha: 0.6 },
     ];
     decoPositions.forEach((d, idx) => {
       const sprite = scene.add.image(d.x, d.y, d.key).setScale(d.scale).setAlpha(d.alpha);
@@ -188,7 +188,7 @@ export function createGlossyButton(
   container.add(g);
 
   if (pawIcon) {
-    const paw = scene.add.image(-width * 0.27, 0, 'deco_paw').setScale(0.75);
+    const paw = scene.add.image(-width * 0.27, 0, 'deco_paw').setScale(0.1875);
     container.add(paw);
   }
 

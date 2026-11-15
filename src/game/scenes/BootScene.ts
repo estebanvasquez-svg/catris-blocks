@@ -19,51 +19,54 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateDecoTextures(): void {
-    // 1. Golden Star
+    // Generate all procedural deco textures at 4x HD (128x128) so large badges/stars never blur
+    const S = 4;
+
+    // 1. Golden Star (128x128)
     const star = this.make.graphics({ x: 0, y: 0 });
     star.fillStyle(0xffd84d, 1);
-    star.lineStyle(2, 0x261a36, 1);
-    this.drawStarPath(star, 16, 16, 5, 13, 6);
-    star.generateTexture('deco_star', 32, 32);
+    star.lineStyle(2 * S, 0x261a36, 1);
+    this.drawStarPath(star, 16 * S, 16 * S, 5, 13 * S, 6 * S);
+    star.generateTexture('deco_star', 32 * S, 32 * S);
     star.destroy();
 
-    // 2. Pink Heart
+    // 2. Pink Heart (120x120)
     const heart = this.make.graphics({ x: 0, y: 0 });
     heart.fillStyle(0xff5c8d, 1);
-    heart.lineStyle(2, 0x261a36, 1);
-    heart.fillCircle(10, 11, 7);
-    heart.fillCircle(20, 11, 7);
-    heart.fillTriangle(3.5, 13, 26.5, 13, 15, 26);
-    heart.generateTexture('deco_heart', 30, 30);
+    heart.lineStyle(2 * S, 0x261a36, 1);
+    heart.fillCircle(10 * S, 11 * S, 7 * S);
+    heart.fillCircle(20 * S, 11 * S, 7 * S);
+    heart.fillTriangle(3.5 * S, 13 * S, 26.5 * S, 13 * S, 15 * S, 26 * S);
+    heart.generateTexture('deco_heart', 30 * S, 30 * S);
     heart.destroy();
 
-    // 3. Cute Paw Print
+    // 3. Cute Paw Print (128x128)
     const paw = this.make.graphics({ x: 0, y: 0 });
     paw.fillStyle(0xff9eb8, 1);
-    paw.fillEllipse(16, 20, 14, 10);
-    paw.fillCircle(8, 12, 3.5);
-    paw.fillCircle(13.5, 8, 3.5);
-    paw.fillCircle(19.5, 8, 3.5);
-    paw.fillCircle(24, 12, 3.5);
-    paw.generateTexture('deco_paw', 32, 32);
+    paw.fillEllipse(16 * S, 20 * S, 14 * S, 10 * S);
+    paw.fillCircle(8 * S, 12 * S, 3.5 * S);
+    paw.fillCircle(13.5 * S, 8 * S, 3.5 * S);
+    paw.fillCircle(19.5 * S, 8 * S, 3.5 * S);
+    paw.fillCircle(24 * S, 12 * S, 3.5 * S);
+    paw.generateTexture('deco_paw', 32 * S, 32 * S);
     paw.destroy();
 
-    // 4. 4-Point Sparkle
+    // 4. 4-Point Sparkle (128x128)
     const sp = this.make.graphics({ x: 0, y: 0 });
     sp.fillStyle(0x7be7ff, 1);
-    sp.fillTriangle(16, 2, 19, 13, 13, 13);
-    sp.fillTriangle(16, 30, 19, 19, 13, 19);
-    sp.fillTriangle(2, 16, 13, 19, 13, 13);
-    sp.fillTriangle(30, 16, 19, 19, 19, 13);
-    sp.fillCircle(16, 16, 3.5);
-    sp.generateTexture('deco_sparkle', 32, 32);
+    sp.fillTriangle(16 * S, 2 * S, 19 * S, 13 * S, 13 * S, 13 * S);
+    sp.fillTriangle(16 * S, 30 * S, 19 * S, 19 * S, 13 * S, 19 * S);
+    sp.fillTriangle(2 * S, 16 * S, 13 * S, 19 * S, 13 * S, 13 * S);
+    sp.fillTriangle(30 * S, 16 * S, 19 * S, 19 * S, 19 * S, 13 * S);
+    sp.fillCircle(16 * S, 16 * S, 3.5 * S);
+    sp.generateTexture('deco_sparkle', 32 * S, 32 * S);
     sp.destroy();
 
-    // 5. White Confetti Square
+    // 5. White Confetti Square (40x40)
     const conf = this.make.graphics({ x: 0, y: 0 });
     conf.fillStyle(0xffffff, 1);
-    conf.fillRoundedRect(0, 0, 10, 10, 2);
-    conf.generateTexture('particle_confetti', 10, 10);
+    conf.fillRoundedRect(0, 0, 10 * S, 10 * S, 2 * S);
+    conf.generateTexture('particle_confetti', 10 * S, 10 * S);
     conf.destroy();
   }
 

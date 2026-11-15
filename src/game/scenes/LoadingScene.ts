@@ -71,7 +71,7 @@ export class LoadingScene extends Phaser.Scene {
     for (let i = 0; i < 5; i++) {
       const px = barX + 36 + i * 58;
       const py = barY + barH / 2;
-      const paw = this.add.image(px, py, 'deco_paw').setScale(0.95).setTint(0x3a4d7a);
+      const paw = this.add.image(px, py, 'deco_paw').setScale(0.2375).setTint(0x3a4d7a);
       this.paws.push(paw);
     }
 
@@ -113,9 +113,9 @@ export class LoadingScene extends Phaser.Scene {
     const litCount = Math.floor(this.progress * 5.05);
     this.paws.forEach((p, idx) => {
       if (idx < litCount) {
-        p.setTint(0xfff4c2).setScale(1.05);
+        p.setTint(0xfff4c2).setScale(0.2625);
       } else {
-        p.setTint(0x3a4d7a).setScale(0.9);
+        p.setTint(0x3a4d7a).setScale(0.225);
       }
     });
   }

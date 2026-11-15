@@ -281,8 +281,8 @@ export class GameScene extends Phaser.Scene {
     holdHit.on('pointerdown', () => this.performHold());
 
     // Cute animated mascot cat (the level's target cat!) & deco on right side
-    this.add.image(rx - 28, 466, 'deco_paw').setScale(0.75).setAlpha(0.75);
-    this.add.image(rx + 28, 474, 'deco_heart').setScale(0.65).setAlpha(0.8);
+    this.add.image(rx - 28, 466, 'deco_paw').setScale(0.1875).setAlpha(0.75);
+    this.add.image(rx + 28, 474, 'deco_heart').setScale(0.1625).setAlpha(0.8);
     this.mascotCat = this.add
       .image(rx, 536, `cat_${this.levelConfig.targetCat}_sticker`)
       .setScale(0.32);
@@ -612,11 +612,11 @@ export class GameScene extends Phaser.Scene {
           this.grid[gr][gc] = colors[r][c] ?? this.levelConfig.targetCat;
           const sx = this.boardX + gc * this.cellSize + this.cellSize / 2;
           const sy = this.boardY + gr * this.cellSize + this.cellSize / 2;
-          const puff = this.add.image(sx, sy, 'deco_sparkle').setScale(0.45).setAlpha(0.85);
+          const puff = this.add.image(sx, sy, 'deco_sparkle').setScale(0.1125).setAlpha(0.85);
           this.tweens.add({
             targets: puff,
             y: sy - 10,
-            scale: 0.8,
+            scale: 0.2,
             alpha: 0,
             duration: 220,
             onComplete: () => puff.destroy(),
@@ -762,12 +762,12 @@ export class GameScene extends Phaser.Scene {
       for (let c = 0; c < BOARD_COLS; c += 2) {
         const sx = this.boardX + c * this.cellSize + 18;
         const sy = ry + 18;
-        const sp = this.add.image(sx, sy, c % 4 === 0 ? 'deco_star' : 'deco_sparkle').setScale(0.75);
+        const sp = this.add.image(sx, sy, c % 4 === 0 ? 'deco_star' : 'deco_sparkle').setScale(0.1875);
         this.tweens.add({
           targets: sp,
           y: sy - 26,
           alpha: 0,
-          scale: 1.3,
+          scale: 0.325,
           duration: 380,
           onComplete: () => sp.destroy(),
         });

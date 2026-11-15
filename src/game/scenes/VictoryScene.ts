@@ -26,7 +26,7 @@ export class VictoryScene extends Phaser.Scene {
       speedY: { min: 70, max: 170 },
       speedX: { min: -30, max: 30 },
       rotate: { min: 0, max: 360 },
-      scale: { start: 1.0, end: 0.6 },
+      scale: { start: 0.25, end: 0.15 },
       tint: [0xff6b8b, 0xffd54f, 0x64e39b, 0x5cc8ff, 0xb983ff],
       lifespan: 5000,
       quantity: 2,
@@ -96,7 +96,7 @@ export class VictoryScene extends Phaser.Scene {
       const sx = GAME_WIDTH / 2 - 58 + i * 58;
       const star = this.add
         .image(sx, 228, 'deco_star')
-        .setScale(i < data.stars ? 1.35 : 1.05)
+        .setScale(i < data.stars ? 0.3375 : 0.2625)
         .setTint(i < data.stars ? 0xffffff : 0x3b4d77);
       if (i < data.stars) {
         this.tweens.add({
