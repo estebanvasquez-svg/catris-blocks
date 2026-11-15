@@ -107,19 +107,34 @@ export class MenuScene extends Phaser.Scene {
       },
     });
 
-    // Collection button (purple)
+    // Collection (left) & Minigames (right) buttons side-by-side
     createGlossyButton(this, {
-      x: GAME_WIDTH / 2,
+      x: GAME_WIDTH / 2 - 86,
       y: 632,
-      width: 235,
+      width: 154,
       height: 54,
       label: 'COLECCIÓN',
       fillColor: 0xb16ef5,
       topHighlight: 0xe2c7ff,
-      fontSize: 24,
+      fontSize: 19,
       onClick: () => {
         sound.playClick();
         this.scene.start('CollectionScene');
+      },
+    });
+
+    createGlossyButton(this, {
+      x: GAME_WIDTH / 2 + 86,
+      y: 632,
+      width: 154,
+      height: 54,
+      label: 'MINIGAMES',
+      fillColor: 0x56d896,
+      topHighlight: 0xaaf5cd,
+      fontSize: 19,
+      onClick: () => {
+        sound.playClick();
+        this.scene.start('MinigamesScene');
       },
     });
 

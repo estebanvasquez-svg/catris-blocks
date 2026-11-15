@@ -124,6 +124,14 @@ class SoundManager {
     this.hapticNotification(NotificationType.Success);
   }
 
+  public playMeowNote(freq: number): void {
+    this.unlock();
+    if (!this.canPlaySfx()) return;
+    this.playTone(freq * 0.85, freq * 1.12, 0.1, 'triangle', 0.16);
+    this.playTone(freq * 1.12, freq * 0.96, 0.15, 'sine', 0.14, 0.08);
+    this.hapticImpact(ImpactStyle.Light);
+  }
+
   public playVictory(): void {
     this.unlock();
     if (!this.canPlaySfx()) return;

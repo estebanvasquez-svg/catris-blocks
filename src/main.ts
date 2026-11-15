@@ -11,6 +11,11 @@ import { VictoryScene } from './game/scenes/VictoryScene';
 import { ShopScene } from './game/scenes/ShopScene';
 import { OptionsScene } from './game/scenes/OptionsScene';
 import { CollectionScene } from './game/scenes/CollectionScene';
+import { MinigamesScene } from './game/scenes/MinigamesScene';
+import { CatTowerScene } from './game/scenes/CatTowerScene';
+import { MiauHeroScene } from './game/scenes/MiauHeroScene';
+import { FindCatScene } from './game/scenes/FindCatScene';
+import { CatCafeScene } from './game/scenes/CatCafeScene';
 
 if (Capacitor.isNativePlatform()) {
   void SystemBars.setStyle({ style: SystemBarsStyle.Dark }).catch(() => {});
@@ -80,6 +85,11 @@ const config: Phaser.Types.Core.GameConfig = {
     ShopScene,
     OptionsScene,
     CollectionScene,
+    MinigamesScene,
+    CatTowerScene,
+    MiauHeroScene,
+    FindCatScene,
+    CatCafeScene,
   ],
 };
 
