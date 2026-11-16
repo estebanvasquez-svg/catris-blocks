@@ -55,6 +55,9 @@ const config: Phaser.Types.Core.GameConfig = {
   width: GAME_WIDTH * HD_SCALE,
   height: GAME_HEIGHT * HD_SCALE,
   backgroundColor: '#122652',
+  audio: {
+    noAudio: true,
+  },
   render: {
     antialias: true,
     antialiasGL: true,

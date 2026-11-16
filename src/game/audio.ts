@@ -9,6 +9,7 @@ class SoundManager {
   private noiseBuffer: AudioBuffer | null = null;
   private nextBarTime = 0;
   private currentBar = 0;
+  private safariUnlocked = false;
   private activeVoices = 0;
   private readonly maxVoices = 16;
   private isBackgrounded = false;
@@ -20,19 +21,41 @@ class SoundManager {
         if (this.isBackgrounded) {
           this.stopMusic();
         } else if (loadSave().options.music && this.ctx) {
-          this.startMusic();
+          this.unlock();
         }
       });
     }
     if (typeof window !== 'undefined') {
       const unlockOnGesture = () => {
-        if (!this.ctx || this.ctx.state !== 'running' || (loadSave().options.music && !this.musicTimer && !this.isBackgrounded)) {
+        if (
+          !this.ctx ||
+          this.ctx.state !== 'running' ||
+          !this.safariUnlocked ||
+          (loadSave().options.music && !this.musicTimer && !this.isBackgrounded)
+        ) {
           this.unlock();
         }
       };
-      window.addEventListener('pointerdown', unlockOnGesture, { passive: true, capture: true });
+      window.addEventListener('touchstart', unlockOnGesture, { passive: true, capture: true });
       window.addEventListener('touchend', unlockOnGesture, { passive: true, capture: true });
+      window.addEventListener('mousedown', unlockOnGesture, { passive: true, capture: true });
+      window.addEventListener('click', unlockOnGesture, { passive: true, capture: true });
+      window.addEventListener('pointerdown', unlockOnGesture, { passive: true, capture: true });
       window.addEventListener('keydown', unlockOnGesture, { passive: true, capture: true });
+    }
+  }
+
+  private playSilentUnlockBuffer(): void {
+    if (!this.ctx || this.safariUnlocked) return;
+    try {
+      const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate || 44100);
+      const source = this.ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.ctx.destination);
+      source.start(0);
+      this.safariUnlocked = true;
+    } catch {
+      // Ignore if context is not ready yet
     }
   }
 
@@ -41,14 +64,25 @@ class SoundManager {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        this.ctx.onstatechange = () => {
+          if (this.ctx?.state === 'running' && loadSave().options.music && !this.musicTimer && !this.isBackgrounded) {
+            this.startMusic();
+          }
+        };
       }
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
+    if (!this.ctx) return;
+
+    // Safari (iOS & macOS) requires resume() + a silent buffer inside touchstart/mousedown/click
+    this.playSilentUnlockBuffer();
+
+    if (this.ctx.state !== 'running') {
       void this.ctx.resume().then(() => {
+        this.playSilentUnlockBuffer();
         if (loadSave().options.music && !this.musicTimer && !this.isBackgrounded) {
           this.startMusic();
         }
-      });
+      }).catch(() => {});
     }
     if (loadSave().options.music && !this.musicTimer && !this.isBackgrounded) {
       this.startMusic();
@@ -185,34 +219,38 @@ class SoundManager {
 
   private playPianoNote(freq: number, startTime: number, duration: number, volume: number): void {
     if (!this.ctx || !this.musicGain) return;
+    const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
+    const dur = Math.max(0.08, duration);
+    const attackEnd = t0 + 0.012;
+    const decayMid = Math.min(t0 + dur - 0.015, Math.max(attackEnd + 0.01, t0 + Math.min(0.28, dur * 0.35)));
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(Math.min(3400, freq * 5.2), startTime);
-    filter.frequency.exponentialRampToValueAtTime(Math.max(420, freq * 1.9), startTime + duration);
+    filter.frequency.setValueAtTime(Math.min(3400, freq * 5.2), t0);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(420, freq * 1.9), t0 + dur);
 
     const env = this.ctx.createGain();
-    env.gain.setValueAtTime(0.0001, startTime);
-    env.gain.linearRampToValueAtTime(volume, startTime + 0.012);
-    env.gain.exponentialRampToValueAtTime(volume * 0.45, startTime + Math.min(0.28, duration * 0.35));
-    env.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.linearRampToValueAtTime(volume, attackEnd);
+    env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.45), decayMid);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
     // Warm fundamental + soft 2nd & 3rd harmonics for acoustic/electric piano body
     const osc1 = this.ctx.createOscillator();
     osc1.type = 'triangle';
-    osc1.frequency.setValueAtTime(freq, startTime);
+    osc1.frequency.setValueAtTime(freq, t0);
 
     const osc2 = this.ctx.createOscillator();
     osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, startTime);
+    osc2.frequency.setValueAtTime(freq * 2, t0);
     const g2 = this.ctx.createGain();
-    g2.gain.setValueAtTime(0.26, startTime);
+    g2.gain.setValueAtTime(0.26, t0);
 
     const osc3 = this.ctx.createOscillator();
     osc3.type = 'sine';
-    osc3.frequency.setValueAtTime(freq * 3, startTime);
+    osc3.frequency.setValueAtTime(freq * 3, t0);
     const g3 = this.ctx.createGain();
-    g3.gain.setValueAtTime(0.08, startTime);
+    g3.gain.setValueAtTime(0.08, t0);
 
     osc1.connect(filter);
     osc2.connect(g2);
@@ -233,10 +271,10 @@ class SoundManager {
       env.disconnect();
     };
 
-    const stopTime = startTime + duration + 0.03;
-    osc1.start(startTime);
-    osc2.start(startTime);
-    osc3.start(startTime);
+    const stopTime = t0 + dur + 0.03;
+    osc1.start(t0);
+    osc2.start(t0);
+    osc3.start(t0);
     osc1.stop(stopTime);
     osc2.stop(stopTime);
     osc3.stop(stopTime);
@@ -251,15 +289,16 @@ class SoundManager {
 
   private playBluesKick(startTime: number, volume = 0.22): void {
     if (!this.ctx || !this.musicGain) return;
+    const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(115, startTime);
-    osc.frequency.exponentialRampToValueAtTime(42, startTime + 0.13);
+    osc.frequency.setValueAtTime(115, t0);
+    osc.frequency.exponentialRampToValueAtTime(42, t0 + 0.13);
 
-    gain.gain.setValueAtTime(0.001, startTime);
-    gain.gain.linearRampToValueAtTime(volume, startTime + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.17);
+    gain.gain.setValueAtTime(0.001, t0);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.17);
 
     osc.connect(gain);
     gain.connect(this.musicGain);
@@ -267,12 +306,13 @@ class SoundManager {
       osc.disconnect();
       gain.disconnect();
     };
-    osc.start(startTime);
-    osc.stop(startTime + 0.19);
+    osc.start(t0);
+    osc.stop(t0 + 0.19);
   }
 
   private playBluesSnare(startTime: number, volume = 0.1): void {
     if (!this.ctx || !this.musicGain) return;
+    const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const buf = this.getNoiseBuffer();
     if (buf) {
       const src = this.ctx.createBufferSource();
@@ -280,13 +320,13 @@ class SoundManager {
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(1600, startTime);
-      filter.Q.setValueAtTime(0.9, startTime);
+      filter.frequency.setValueAtTime(1600, t0);
+      filter.Q.setValueAtTime(0.9, t0);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.001, startTime);
-      gain.gain.linearRampToValueAtTime(volume, startTime + 0.005);
-      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.14);
+      gain.gain.setValueAtTime(0.001, t0);
+      gain.gain.linearRampToValueAtTime(volume, t0 + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
 
       src.connect(filter);
       filter.connect(gain);
@@ -296,30 +336,31 @@ class SoundManager {
         filter.disconnect();
         gain.disconnect();
       };
-      src.start(startTime);
-      src.stop(startTime + 0.16);
+      src.start(t0);
+      src.stop(t0 + 0.16);
     }
 
     // Warm snare/rim body
     const body = this.ctx.createOscillator();
     const bGain = this.ctx.createGain();
     body.type = 'triangle';
-    body.frequency.setValueAtTime(185, startTime);
-    body.frequency.exponentialRampToValueAtTime(105, startTime + 0.06);
-    bGain.gain.setValueAtTime(volume * 0.55, startTime);
-    bGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.08);
+    body.frequency.setValueAtTime(185, t0);
+    body.frequency.exponentialRampToValueAtTime(105, t0 + 0.06);
+    bGain.gain.setValueAtTime(volume * 0.55, t0);
+    bGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08);
     body.connect(bGain);
     bGain.connect(this.musicGain);
     body.onended = () => {
       body.disconnect();
       bGain.disconnect();
     };
-    body.start(startTime);
-    body.stop(startTime + 0.09);
+    body.start(t0);
+    body.stop(t0 + 0.09);
   }
 
   private playBluesBrushHat(startTime: number, volume = 0.045, open = false): void {
     if (!this.ctx || !this.musicGain) return;
+    const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const buf = this.getNoiseBuffer();
     if (!buf) return;
 
@@ -328,13 +369,13 @@ class SoundManager {
 
     const hp = this.ctx.createBiquadFilter();
     hp.type = 'highpass';
-    hp.frequency.setValueAtTime(6200, startTime);
+    hp.frequency.setValueAtTime(6200, t0);
 
     const dur = open ? 0.15 : 0.055;
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.001, startTime);
-    gain.gain.linearRampToValueAtTime(volume, startTime + 0.004);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+    gain.gain.setValueAtTime(0.001, t0);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
     src.connect(hp);
     hp.connect(gain);
@@ -344,8 +385,8 @@ class SoundManager {
       hp.disconnect();
       gain.disconnect();
     };
-    src.start(startTime);
-    src.stop(startTime + dur + 0.02);
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
   }
 
   private scheduleThemeBar(barIndex: number, barStart: number, beatSec: number): void {
