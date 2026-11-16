@@ -6,6 +6,8 @@ class SoundManager {
   private ctx: AudioContext | null = null;
   private musicTimer: number | null = null;
   private musicGain: GainNode | null = null;
+  private musicBus: GainNode | null = null;
+  private vinylNode: AudioBufferSourceNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private nextBarTime = 0;
   private currentBar = 0;
@@ -218,39 +220,42 @@ class SoundManager {
   }
 
   private playPianoNote(freq: number, startTime: number, duration: number, volume: number): void {
-    if (!this.ctx || !this.musicGain) return;
+    const dest = this.musicBus ?? this.musicGain;
+    if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
-    const dur = Math.max(0.08, duration);
-    const attackEnd = t0 + 0.012;
-    const decayMid = Math.min(t0 + dur - 0.015, Math.max(attackEnd + 0.01, t0 + Math.min(0.28, dur * 0.35)));
+    const dur = Math.max(0.12, duration);
+    const attackEnd = t0 + 0.024;
+    const decayMid = Math.min(t0 + dur - 0.02, Math.max(attackEnd + 0.02, t0 + Math.min(0.45, dur * 0.45)));
 
+    // Warm felt/Rhodes lofi lowpass (avoids bright 8-bit overtones)
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(Math.min(3400, freq * 5.2), t0);
-    filter.frequency.exponentialRampToValueAtTime(Math.max(420, freq * 1.9), t0 + dur);
+    filter.Q.setValueAtTime(0.6, t0);
+    filter.frequency.setValueAtTime(Math.min(1850, freq * 2.5), t0);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(260, freq * 1.15), t0 + dur);
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
     env.gain.linearRampToValueAtTime(volume, attackEnd);
-    env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.56), decayMid);
+    env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.68), decayMid);
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-    // Warm fundamental + soft 2nd & 3rd harmonics for acoustic/electric piano body
+    // Pure sine fundamental + gentle 2nd/3rd sine harmonics (warm electric/felt piano, zero chiptune buzz)
     const osc1 = this.ctx.createOscillator();
-    osc1.type = 'triangle';
+    osc1.type = 'sine';
     osc1.frequency.setValueAtTime(freq, t0);
 
     const osc2 = this.ctx.createOscillator();
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(freq * 2, t0);
     const g2 = this.ctx.createGain();
-    g2.gain.setValueAtTime(0.26, t0);
+    g2.gain.setValueAtTime(0.16, t0);
 
     const osc3 = this.ctx.createOscillator();
     osc3.type = 'sine';
     osc3.frequency.setValueAtTime(freq * 3, t0);
     const g3 = this.ctx.createGain();
-    g3.gain.setValueAtTime(0.08, t0);
+    g3.gain.setValueAtTime(0.025, t0);
 
     osc1.connect(filter);
     osc2.connect(g2);
@@ -259,7 +264,7 @@ class SoundManager {
     g3.connect(filter);
 
     filter.connect(env);
-    env.connect(this.musicGain);
+    env.connect(dest);
 
     osc1.onended = () => {
       osc1.disconnect();
@@ -287,37 +292,38 @@ class SoundManager {
     });
   }
 
-  private playSoftPad(freqs: number[], startTime: number, duration: number, volume = 0.024): void {
-    if (!this.ctx || !this.musicGain) return;
+  private playSoftPad(freqs: number[], startTime: number, duration: number, volume = 0.044): void {
+    const dest = this.musicBus ?? this.musicGain;
+    if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
-    const dur = Math.max(0.5, duration);
-    const fadeIn = Math.min(0.48, dur * 0.3);
-    const fadeOutStart = Math.max(t0 + fadeIn + 0.05, t0 + dur - 0.45);
+    const dur = Math.max(0.6, duration);
+    const fadeIn = Math.min(0.55, dur * 0.32);
+    const fadeOutStart = Math.max(t0 + fadeIn + 0.05, t0 + dur - 0.52);
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(760, t0);
-    filter.Q.setValueAtTime(0.7, t0);
+    filter.frequency.setValueAtTime(720, t0);
+    filter.Q.setValueAtTime(0.6, t0);
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
     env.gain.linearRampToValueAtTime(volume, t0 + fadeIn);
-    env.gain.setValueAtTime(volume * 0.92, fadeOutStart);
+    env.gain.setValueAtTime(volume * 0.94, fadeOutStart);
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
     filter.connect(env);
-    env.connect(this.musicGain);
+    env.connect(dest);
 
     const oscs: OscillatorNode[] = [];
     for (const freq of freqs) {
-      for (const detune of [-5, 5]) {
+      for (const detune of [-7, 0, 7]) {
         const osc = this.ctx.createOscillator();
-        osc.type = detune < 0 ? 'sine' : 'triangle';
+        osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t0);
         osc.detune.setValueAtTime(detune, t0);
         osc.connect(filter);
         osc.start(t0);
-        osc.stop(t0 + dur + 0.03);
+        osc.stop(t0 + dur + 0.04);
         oscs.push(osc);
       }
     }
@@ -332,30 +338,32 @@ class SoundManager {
   }
 
   private playBluesKick(startTime: number, volume = 0.22): void {
-    if (!this.ctx || !this.musicGain) return;
+    const dest = this.musicBus ?? this.musicGain;
+    if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(115, t0);
-    osc.frequency.exponentialRampToValueAtTime(42, t0 + 0.13);
+    osc.frequency.setValueAtTime(96, t0);
+    osc.frequency.exponentialRampToValueAtTime(38, t0 + 0.14);
 
     gain.gain.setValueAtTime(0.001, t0);
-    gain.gain.linearRampToValueAtTime(volume, t0 + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.17);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.19);
 
     osc.connect(gain);
-    gain.connect(this.musicGain);
+    gain.connect(dest);
     osc.onended = () => {
       osc.disconnect();
       gain.disconnect();
     };
     osc.start(t0);
-    osc.stop(t0 + 0.19);
+    osc.stop(t0 + 0.21);
   }
 
   private playBluesSnare(startTime: number, volume = 0.1): void {
-    if (!this.ctx || !this.musicGain) return;
+    const dest = this.musicBus ?? this.musicGain;
+    if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const buf = this.getNoiseBuffer();
     if (buf) {
@@ -364,46 +372,47 @@ class SoundManager {
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(1600, t0);
-      filter.Q.setValueAtTime(0.9, t0);
+      filter.frequency.setValueAtTime(1150, t0);
+      filter.Q.setValueAtTime(0.85, t0);
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.001, t0);
-      gain.gain.linearRampToValueAtTime(volume, t0 + 0.005);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+      gain.gain.linearRampToValueAtTime(volume, t0 + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.15);
 
       src.connect(filter);
       filter.connect(gain);
-      gain.connect(this.musicGain);
+      gain.connect(dest);
       src.onended = () => {
         src.disconnect();
         filter.disconnect();
         gain.disconnect();
       };
       src.start(t0);
-      src.stop(t0 + 0.16);
+      src.stop(t0 + 0.17);
     }
 
-    // Warm snare/rim body
+    // Warm lofi snare/rim body
     const body = this.ctx.createOscillator();
     const bGain = this.ctx.createGain();
-    body.type = 'triangle';
-    body.frequency.setValueAtTime(185, t0);
-    body.frequency.exponentialRampToValueAtTime(105, t0 + 0.06);
-    bGain.gain.setValueAtTime(volume * 0.55, t0);
-    bGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08);
+    body.type = 'sine';
+    body.frequency.setValueAtTime(165, t0);
+    body.frequency.exponentialRampToValueAtTime(92, t0 + 0.07);
+    bGain.gain.setValueAtTime(volume * 0.6, t0);
+    bGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
     body.connect(bGain);
-    bGain.connect(this.musicGain);
+    bGain.connect(dest);
     body.onended = () => {
       body.disconnect();
       bGain.disconnect();
     };
     body.start(t0);
-    body.stop(t0 + 0.09);
+    body.stop(t0 + 0.1);
   }
 
   private playBluesBrushHat(startTime: number, volume = 0.045, open = false): void {
-    if (!this.ctx || !this.musicGain) return;
+    const dest = this.musicBus ?? this.musicGain;
+    if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const buf = this.getNoiseBuffer();
     if (!buf) return;
@@ -411,22 +420,23 @@ class SoundManager {
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
 
-    const hp = this.ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.setValueAtTime(6200, t0);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(3800, t0);
+    bp.Q.setValueAtTime(0.9, t0);
 
     const dur = open ? 0.15 : 0.055;
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(0.001, t0);
-    gain.gain.linearRampToValueAtTime(volume, t0 + 0.004);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.006);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-    src.connect(hp);
-    hp.connect(gain);
-    gain.connect(this.musicGain);
+    src.connect(bp);
+    bp.connect(gain);
+    gain.connect(dest);
     src.onended = () => {
       src.disconnect();
-      hp.disconnect();
+      bp.disconnect();
       gain.disconnect();
     };
     src.start(t0);
@@ -440,18 +450,19 @@ class SoundManager {
     volume = 0.085,
     scoop = false
   ): void {
-    if (!this.ctx || !this.musicGain) return;
+    const dest = this.musicBus ?? this.musicGain;
+    if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const dur = Math.max(0.14, duration);
-    const attackEnd = t0 + Math.min(0.055, dur * 0.25);
-    const releaseStart = Math.max(attackEnd + 0.02, t0 + dur - 0.07);
+    const attackEnd = t0 + Math.min(0.065, dur * 0.28);
+    const releaseStart = Math.max(attackEnd + 0.02, t0 + dur - 0.08);
 
     // Warm lofi lowpass filter (rolls off harsh reed harmonics for a velvety sax)
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.Q.setValueAtTime(1.5, t0);
-    filter.frequency.setValueAtTime(Math.min(1350, freq * 2.6), t0);
-    filter.frequency.linearRampToValueAtTime(Math.min(1050, freq * 2.1), t0 + dur);
+    filter.Q.setValueAtTime(1.2, t0);
+    filter.frequency.setValueAtTime(Math.min(1020, freq * 2.1), t0);
+    filter.frequency.linearRampToValueAtTime(Math.min(780, freq * 1.65), t0 + dur);
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
@@ -459,40 +470,43 @@ class SoundManager {
     env.gain.setValueAtTime(volume * 0.88, releaseStart);
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-    // Reed sawtooth + warm triangle body
+    // Soft reed sawtooth + dominant warm sine body (smooth lofi sax, no harsh buzz)
     const reed = this.ctx.createOscillator();
     reed.type = 'sawtooth';
+    const reedGain = this.ctx.createGain();
+    reedGain.gain.setValueAtTime(0.35, t0);
     if (scoop) {
       reed.frequency.setValueAtTime(freq * 0.96, t0);
-      reed.frequency.exponentialRampToValueAtTime(freq, t0 + 0.055);
+      reed.frequency.exponentialRampToValueAtTime(freq, t0 + 0.06);
     } else {
       reed.frequency.setValueAtTime(freq, t0);
     }
 
     const body = this.ctx.createOscillator();
-    body.type = 'triangle';
+    body.type = 'sine';
     body.frequency.setValueAtTime(freq, t0);
     const bodyGain = this.ctx.createGain();
-    bodyGain.gain.setValueAtTime(0.45, t0);
+    bodyGain.gain.setValueAtTime(0.7, t0);
 
     // Gentle lofi vibrato
     const lfo = this.ctx.createOscillator();
     lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(4.6, t0);
+    lfo.frequency.setValueAtTime(4.5, t0);
     const lfoGain = this.ctx.createGain();
     lfoGain.gain.setValueAtTime(0, t0);
-    lfoGain.gain.linearRampToValueAtTime(freq * 0.0085, Math.min(t0 + dur * 0.5, t0 + 0.18));
+    lfoGain.gain.linearRampToValueAtTime(freq * 0.008, Math.min(t0 + dur * 0.5, t0 + 0.18));
 
     lfo.connect(lfoGain);
     lfoGain.connect(reed.frequency);
     lfoGain.connect(body.frequency);
 
-    reed.connect(filter);
+    reed.connect(reedGain);
+    reedGain.connect(filter);
     body.connect(bodyGain);
     bodyGain.connect(filter);
 
     filter.connect(env);
-    env.connect(this.musicGain);
+    env.connect(dest);
 
     // Subtle breath air texture
     const buf = this.getNoiseBuffer();
@@ -505,21 +519,22 @@ class SoundManager {
       airSrc.loop = true;
       airFilter = this.ctx.createBiquadFilter();
       airFilter.type = 'bandpass';
-      airFilter.frequency.setValueAtTime(1250, t0);
-      airFilter.Q.setValueAtTime(1.2, t0);
+      airFilter.frequency.setValueAtTime(1100, t0);
+      airFilter.Q.setValueAtTime(1.1, t0);
       airGain = this.ctx.createGain();
       airGain.gain.setValueAtTime(0.0001, t0);
-      airGain.gain.linearRampToValueAtTime(volume * 0.11, attackEnd);
+      airGain.gain.linearRampToValueAtTime(volume * 0.12, attackEnd);
       airGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       airSrc.connect(airFilter);
       airFilter.connect(airGain);
-      airGain.connect(this.musicGain);
+      airGain.connect(dest);
       airSrc.start(t0);
       airSrc.stop(t0 + dur + 0.02);
     }
 
     reed.onended = () => {
       reed.disconnect();
+      reedGain.disconnect();
       body.disconnect();
       bodyGain.disconnect();
       lfo.disconnect();
@@ -577,10 +592,10 @@ class SoundManager {
         ],
       },
       {
-        // Bar 1: E (root position, smooth voice leading from C)
-        chord: [329.63, 415.3, 493.88],
-        altChord: [329.63, 415.3, 493.88, 587.33], // E7 color on off-beat
-        bass1: 164.81, // E3
+        // Bar 1: E (2nd inversion [B3, E4, G#4], smooth voice leading from C)
+        chord: [246.94, 329.63, 415.3],
+        altChord: [246.94, 293.66, 329.63, 415.3], // E7 (2nd inv) color
+        bass1: 103.83, // G#2 (1st inv bass color)
         bass2: 123.47, // B2
         melody: [
           { beat: 0.0, freq: 622.25, dur: 0.16, vol: 0.065 }, // Eb5 blue-note grace
@@ -590,10 +605,10 @@ class SoundManager {
         ],
       },
       {
-        // Bar 2: F (root position, +1 semitone resolution from E)
-        chord: [349.23, 440.0, 523.25],
-        altChord: [349.23, 440.0, 523.25],
-        bass1: 174.61, // F3
+        // Bar 2: F (2nd inversion [C4, F4, A4], +1 semitone voice-leading from E 2nd inv!)
+        chord: [261.63, 349.23, 440.0],
+        altChord: [261.63, 349.23, 440.0],
+        bass1: 110.0,  // A2 (1st inv bass color)
         bass2: 130.81, // C3
         melody: [
           { beat: 0.0, freq: 523.25, dur: 0.7, vol: 0.095 }, // C5
@@ -603,11 +618,11 @@ class SoundManager {
         ],
       },
       {
-        // Bar 3: G7 (3rd inversion [F4, G4, B4] -> resolves to C [E4, G4, C5])
-        chord: [349.23, 392.0, 493.88],
-        altChord: [293.66, 392.0, 493.88], // G 2nd inv
-        bass1: 98.0,   // G2
-        bass2: 123.47, // B2
+        // Bar 3: G (1st inversion [B3, D4, G4] -> G7 1st inv [B3, F4, G4])
+        chord: [246.94, 293.66, 392.0],
+        altChord: [246.94, 349.23, 392.0], // G7 1st inv
+        bass1: 123.47, // B2
+        bass2: 98.0,   // G2
         melody: [
           { beat: 0.0, freq: 587.33, dur: 0.7, vol: 0.095 }, // D5
           { beat: 1.0, freq: 493.88, dur: 0.58, vol: 0.085 }, // B4
@@ -670,20 +685,20 @@ class SoundManager {
 
     const data = progression[bar];
 
-    // Soft warm pad underneath the piano chord
-    this.playSoftPad(data.chord, barStart, beatSec * 2.15, 0.022);
+    // Lush warm lofi pad underneath the piano chord (more presence + octave root)
+    this.playSoftPad([data.bass1 * 2, ...data.chord], barStart, beatSec * 2.45, 0.042);
 
-    // Piano Left Hand Bass (walking 2/4 with subtle sustain pedal)
-    this.playPianoNote(data.bass1, barStart, beatSec * 1.25, 0.19);
-    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 1.05, 0.16);
+    // Piano Left Hand Bass (walking 2/4 with heavy sustain pedal)
+    this.playPianoNote(data.bass1, barStart, beatSec * 1.65, 0.21);
+    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 1.45, 0.18);
 
-    // Piano Right Hand Chords (sustain pedal across the bar + gentle swung blues comping)
-    this.playPianoChord(data.chord, barStart, beatSec * 1.88, 0.105);
-    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.65, 0.075);
+    // Piano Right Hand Chords (deep sustain pedal across the bar + swung blues comping)
+    this.playPianoChord(data.chord, barStart, beatSec * 2.28, 0.115);
+    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.85, 0.08);
 
-    // Expressive Blues-Kawaii Piano Melody (with sustain pedal tail)
+    // Expressive Blues-Kawaii Piano Melody (with generous sustain pedal tail)
     for (const note of data.melody) {
-      const pedalDur = (note.dur + 0.28) * beatSec;
+      const pedalDur = (note.dur + 0.5) * beatSec;
       this.playPianoNote(note.freq, barStart + note.beat * beatSec, pedalDur, (note.vol ?? 0.09) * 1.45);
     }
 
@@ -767,6 +782,44 @@ class SoundManager {
     this.musicGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
     this.musicGain.connect(this.ctx.destination);
 
+    // Master Lofi Tape Bus: warm lowpass roll-off + gentle glue compressor
+    const tapeFilter = this.ctx.createBiquadFilter();
+    tapeFilter.type = 'lowpass';
+    tapeFilter.frequency.setValueAtTime(1550, this.ctx.currentTime);
+    tapeFilter.Q.setValueAtTime(0.65, this.ctx.currentTime);
+
+    const tapeComp = this.ctx.createDynamicsCompressor();
+    tapeComp.threshold.setValueAtTime(-16, this.ctx.currentTime);
+    tapeComp.knee.setValueAtTime(18, this.ctx.currentTime);
+    tapeComp.ratio.setValueAtTime(3.2, this.ctx.currentTime);
+    tapeComp.attack.setValueAtTime(0.015, this.ctx.currentTime);
+    tapeComp.release.setValueAtTime(0.22, this.ctx.currentTime);
+
+    this.musicBus = this.ctx.createGain();
+    this.musicBus.gain.setValueAtTime(1.0, this.ctx.currentTime);
+    this.musicBus.connect(tapeFilter);
+    tapeFilter.connect(tapeComp);
+    tapeComp.connect(this.musicGain);
+
+    // Subtle warm vinyl / tape texture
+    const noiseBuf = this.getNoiseBuffer();
+    if (noiseBuf) {
+      const vinyl = this.ctx.createBufferSource();
+      vinyl.buffer = noiseBuf;
+      vinyl.loop = true;
+      const vFilter = this.ctx.createBiquadFilter();
+      vFilter.type = 'bandpass';
+      vFilter.frequency.setValueAtTime(1400, this.ctx.currentTime);
+      vFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
+      const vGain = this.ctx.createGain();
+      vGain.gain.setValueAtTime(0.008, this.ctx.currentTime);
+      vinyl.connect(vFilter);
+      vFilter.connect(vGain);
+      vGain.connect(this.musicGain);
+      vinyl.start(this.ctx.currentTime);
+      this.vinylNode = vinyl;
+    }
+
     this.currentBar = 0;
     this.nextBarTime = this.ctx.currentTime + 0.06;
 
@@ -793,6 +846,19 @@ class SoundManager {
     if (this.musicTimer !== null) {
       clearInterval(this.musicTimer);
       this.musicTimer = null;
+    }
+    if (this.vinylNode) {
+      try {
+        this.vinylNode.stop();
+      } catch {
+        // Ignore if already stopped
+      }
+      this.vinylNode.disconnect();
+      this.vinylNode = null;
+    }
+    if (this.musicBus) {
+      this.musicBus.disconnect();
+      this.musicBus = null;
     }
     if (this.musicGain) {
       this.musicGain.disconnect();
