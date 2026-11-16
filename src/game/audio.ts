@@ -24,6 +24,16 @@ class SoundManager {
         }
       });
     }
+    if (typeof window !== 'undefined') {
+      const unlockOnGesture = () => {
+        if (!this.ctx || this.ctx.state !== 'running' || (loadSave().options.music && !this.musicTimer && !this.isBackgrounded)) {
+          this.unlock();
+        }
+      };
+      window.addEventListener('pointerdown', unlockOnGesture, { passive: true, capture: true });
+      window.addEventListener('touchend', unlockOnGesture, { passive: true, capture: true });
+      window.addEventListener('keydown', unlockOnGesture, { passive: true, capture: true });
+    }
   }
 
   public unlock(): void {
@@ -34,7 +44,11 @@ class SoundManager {
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      void this.ctx.resume();
+      void this.ctx.resume().then(() => {
+        if (loadSave().options.music && !this.musicTimer && !this.isBackgrounded) {
+          this.startMusic();
+        }
+      });
     }
     if (loadSave().options.music && !this.musicTimer && !this.isBackgrounded) {
       this.startMusic();
@@ -463,30 +477,30 @@ class SoundManager {
     const data = progression[bar];
 
     // Piano Left Hand Bass (walking 2/4)
-    this.playPianoNote(data.bass1, barStart, beatSec * 0.92, 0.135);
-    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 0.9, 0.115);
+    this.playPianoNote(data.bass1, barStart, beatSec * 0.92, 0.19);
+    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 0.9, 0.16);
 
     // Piano Right Hand Chords (warm downbeat + gentle swung blues comping)
-    this.playPianoChord(data.chord, barStart, beatSec * 0.95, 0.068);
-    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.45, 0.048);
+    this.playPianoChord(data.chord, barStart, beatSec * 0.95, 0.105);
+    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.45, 0.075);
 
     // Expressive Blues-Kawaii Piano Melody
     for (const note of data.melody) {
-      this.playPianoNote(note.freq, barStart + note.beat * beatSec, note.dur * beatSec, note.vol ?? 0.09);
+      this.playPianoNote(note.freq, barStart + note.beat * beatSec, note.dur * beatSec, (note.vol ?? 0.09) * 1.45);
     }
 
     // Blues Percussion in 2/4 Shuffle
-    this.playBluesKick(barStart, 0.22);
+    this.playBluesKick(barStart, 0.28);
     if (bar % 2 === 1) {
-      this.playBluesKick(barStart + beatSec * (1 + swing), 0.13);
+      this.playBluesKick(barStart + beatSec * (1 + swing), 0.17);
     }
-    this.playBluesSnare(barStart + beatSec, 0.11); // Backbeat on beat 2
+    this.playBluesSnare(barStart + beatSec, 0.16); // Backbeat on beat 2
 
     // Triplet brush shuffle on ride/hi-hat
-    this.playBluesBrushHat(barStart, 0.048, false);
-    this.playBluesBrushHat(barStart + beatSec * swing, 0.036, false);
-    this.playBluesBrushHat(barStart + beatSec, 0.052, false);
-    this.playBluesBrushHat(barStart + beatSec * (1 + swing), 0.04, bar % 4 === 3);
+    this.playBluesBrushHat(barStart, 0.072, false);
+    this.playBluesBrushHat(barStart + beatSec * swing, 0.056, false);
+    this.playBluesBrushHat(barStart + beatSec, 0.078, false);
+    this.playBluesBrushHat(barStart + beatSec * (1 + swing), 0.06, bar % 4 === 3);
   }
 
   public startMusic(): void {
@@ -498,7 +512,7 @@ class SoundManager {
     const BAR_SEC = BEAT_SEC * 2; // 2/4 time signature
 
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
+    this.musicGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
     this.musicGain.connect(this.ctx.destination);
 
     this.currentBar = 0;
