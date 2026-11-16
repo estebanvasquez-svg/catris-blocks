@@ -6,8 +6,6 @@ class SoundManager {
   private ctx: AudioContext | null = null;
   private musicTimer: number | null = null;
   private musicGain: GainNode | null = null;
-  private musicBus: GainNode | null = null;
-  private vinylNode: AudioBufferSourceNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private nextBarTime = 0;
   private currentBar = 0;
@@ -220,19 +218,18 @@ class SoundManager {
   }
 
   private playPianoNote(freq: number, startTime: number, duration: number, volume: number): void {
-    const dest = this.musicBus ?? this.musicGain;
-    if (!this.ctx || !dest) return;
+    if (!this.ctx || !this.musicGain) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const dur = Math.max(0.12, duration);
-    const attackEnd = t0 + 0.024;
+    const attackEnd = t0 + 0.022;
     const decayMid = Math.min(t0 + dur - 0.02, Math.max(attackEnd + 0.02, t0 + Math.min(0.45, dur * 0.45)));
 
-    // Warm felt/Rhodes lofi lowpass (avoids bright 8-bit overtones)
+    // Warm Rhodes/felt lofi lowpass (keeps warm mids audible on Safari/mobile speakers)
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.Q.setValueAtTime(0.6, t0);
-    filter.frequency.setValueAtTime(Math.min(1850, freq * 2.5), t0);
-    filter.frequency.exponentialRampToValueAtTime(Math.max(260, freq * 1.15), t0 + dur);
+    filter.Q.setValueAtTime(0.65, t0);
+    filter.frequency.setValueAtTime(Math.min(2400, Math.max(900, freq * 3.2)), t0);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(480, freq * 1.45), t0 + dur);
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
@@ -240,22 +237,22 @@ class SoundManager {
     env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.68), decayMid);
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-    // Pure sine fundamental + gentle 2nd/3rd sine harmonics (warm electric/felt piano, zero chiptune buzz)
+    // Warm Rhodes blend: sine fundamental + soft triangle body + gentle 2nd harmonic
     const osc1 = this.ctx.createOscillator();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(freq, t0);
 
     const osc2 = this.ctx.createOscillator();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 2, t0);
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(freq, t0);
     const g2 = this.ctx.createGain();
-    g2.gain.setValueAtTime(0.16, t0);
+    g2.gain.setValueAtTime(0.28, t0);
 
     const osc3 = this.ctx.createOscillator();
     osc3.type = 'sine';
-    osc3.frequency.setValueAtTime(freq * 3, t0);
+    osc3.frequency.setValueAtTime(freq * 2, t0);
     const g3 = this.ctx.createGain();
-    g3.gain.setValueAtTime(0.025, t0);
+    g3.gain.setValueAtTime(0.16, t0);
 
     osc1.connect(filter);
     osc2.connect(g2);
@@ -264,7 +261,7 @@ class SoundManager {
     g3.connect(filter);
 
     filter.connect(env);
-    env.connect(dest);
+    env.connect(this.musicGain);
 
     osc1.onended = () => {
       osc1.disconnect();
@@ -292,17 +289,16 @@ class SoundManager {
     });
   }
 
-  private playSoftPad(freqs: number[], startTime: number, duration: number, volume = 0.044): void {
-    const dest = this.musicBus ?? this.musicGain;
-    if (!this.ctx || !dest) return;
+  private playSoftPad(freqs: number[], startTime: number, duration: number, volume = 0.036): void {
+    if (!this.ctx || !this.musicGain) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const dur = Math.max(0.6, duration);
-    const fadeIn = Math.min(0.55, dur * 0.32);
-    const fadeOutStart = Math.max(t0 + fadeIn + 0.05, t0 + dur - 0.52);
+    const fadeIn = Math.min(0.5, dur * 0.3);
+    const fadeOutStart = Math.max(t0 + fadeIn + 0.05, t0 + dur - 0.5);
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(720, t0);
+    filter.frequency.setValueAtTime(1050, t0);
     filter.Q.setValueAtTime(0.6, t0);
 
     const env = this.ctx.createGain();
@@ -312,7 +308,7 @@ class SoundManager {
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
     filter.connect(env);
-    env.connect(dest);
+    env.connect(this.musicGain);
 
     const oscs: OscillatorNode[] = [];
     for (const freq of freqs) {
@@ -338,7 +334,7 @@ class SoundManager {
   }
 
   private playBluesKick(startTime: number, volume = 0.22): void {
-    const dest = this.musicBus ?? this.musicGain;
+    const dest = this.musicGain;
     if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const osc = this.ctx.createOscillator();
@@ -362,7 +358,7 @@ class SoundManager {
   }
 
   private playBluesSnare(startTime: number, volume = 0.1): void {
-    const dest = this.musicBus ?? this.musicGain;
+    const dest = this.musicGain;
     if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const buf = this.getNoiseBuffer();
@@ -411,7 +407,7 @@ class SoundManager {
   }
 
   private playBluesBrushHat(startTime: number, volume = 0.045, open = false): void {
-    const dest = this.musicBus ?? this.musicGain;
+    const dest = this.musicGain;
     if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const buf = this.getNoiseBuffer();
@@ -450,7 +446,7 @@ class SoundManager {
     volume = 0.085,
     scoop = false
   ): void {
-    const dest = this.musicBus ?? this.musicGain;
+    const dest = this.musicGain;
     if (!this.ctx || !dest) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const dur = Math.max(0.14, duration);
@@ -782,44 +778,6 @@ class SoundManager {
     this.musicGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
     this.musicGain.connect(this.ctx.destination);
 
-    // Master Lofi Tape Bus: warm lowpass roll-off + gentle glue compressor
-    const tapeFilter = this.ctx.createBiquadFilter();
-    tapeFilter.type = 'lowpass';
-    tapeFilter.frequency.setValueAtTime(1550, this.ctx.currentTime);
-    tapeFilter.Q.setValueAtTime(0.65, this.ctx.currentTime);
-
-    const tapeComp = this.ctx.createDynamicsCompressor();
-    tapeComp.threshold.setValueAtTime(-16, this.ctx.currentTime);
-    tapeComp.knee.setValueAtTime(18, this.ctx.currentTime);
-    tapeComp.ratio.setValueAtTime(3.2, this.ctx.currentTime);
-    tapeComp.attack.setValueAtTime(0.015, this.ctx.currentTime);
-    tapeComp.release.setValueAtTime(0.22, this.ctx.currentTime);
-
-    this.musicBus = this.ctx.createGain();
-    this.musicBus.gain.setValueAtTime(1.0, this.ctx.currentTime);
-    this.musicBus.connect(tapeFilter);
-    tapeFilter.connect(tapeComp);
-    tapeComp.connect(this.musicGain);
-
-    // Subtle warm vinyl / tape texture
-    const noiseBuf = this.getNoiseBuffer();
-    if (noiseBuf) {
-      const vinyl = this.ctx.createBufferSource();
-      vinyl.buffer = noiseBuf;
-      vinyl.loop = true;
-      const vFilter = this.ctx.createBiquadFilter();
-      vFilter.type = 'bandpass';
-      vFilter.frequency.setValueAtTime(1400, this.ctx.currentTime);
-      vFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
-      const vGain = this.ctx.createGain();
-      vGain.gain.setValueAtTime(0.008, this.ctx.currentTime);
-      vinyl.connect(vFilter);
-      vFilter.connect(vGain);
-      vGain.connect(this.musicGain);
-      vinyl.start(this.ctx.currentTime);
-      this.vinylNode = vinyl;
-    }
-
     this.currentBar = 0;
     this.nextBarTime = this.ctx.currentTime + 0.06;
 
@@ -832,7 +790,11 @@ class SoundManager {
         this.nextBarTime = this.ctx.currentTime + 0.05;
       }
       while (this.nextBarTime < this.ctx.currentTime + scheduleAheadSec) {
-        this.scheduleThemeBar(this.currentBar, this.nextBarTime, BEAT_SEC);
+        try {
+          this.scheduleThemeBar(this.currentBar, this.nextBarTime, BEAT_SEC);
+        } catch {
+          // Keep scheduler alive
+        }
         this.nextBarTime += BAR_SEC;
         this.currentBar = (this.currentBar + 1) % 16;
       }
@@ -846,19 +808,6 @@ class SoundManager {
     if (this.musicTimer !== null) {
       clearInterval(this.musicTimer);
       this.musicTimer = null;
-    }
-    if (this.vinylNode) {
-      try {
-        this.vinylNode.stop();
-      } catch {
-        // Ignore if already stopped
-      }
-      this.vinylNode.disconnect();
-      this.vinylNode = null;
-    }
-    if (this.musicBus) {
-      this.musicBus.disconnect();
-      this.musicBus = null;
     }
     if (this.musicGain) {
       this.musicGain.disconnect();
