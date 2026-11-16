@@ -575,106 +575,97 @@ class SoundManager {
       melody: Array<{ beat: number; freq: number; dur: number; vol?: number }>;
     }> = [
       {
-        // Bar 0: C (1st inversion)
-        chord: [329.63, 392.0, 523.25],
-        altChord: [329.63, 392.0, 523.25],
+        // Bar 0: Cmaj7 (1st inversion [E4, G4, B4, C5] - wistful & nostalgic)
+        chord: [329.63, 392.0, 493.88, 523.25],
+        altChord: [329.63, 392.0, 493.88],
         bass1: 130.81, // C3
         bass2: 98.0,   // G2
         melody: [
-          { beat: 0.0, freq: 523.25, dur: 0.72, vol: 0.095 }, // C5
-          { beat: swing, freq: 659.25, dur: 0.42, vol: 0.085 }, // E5
-          { beat: 1.0, freq: 783.99, dur: 0.78, vol: 0.1 },   // G5
-          { beat: 1 + swing, freq: 659.25, dur: 0.4, vol: 0.08 }, // E5
+          { beat: 0.0, freq: 493.88, dur: 0.95, vol: 0.088 }, // B4 (wistful maj7)
+          { beat: 1.0, freq: 392.0, dur: 0.72, vol: 0.082 },  // G4 (gentle sigh)
+          { beat: 1 + swing, freq: 440.0, dur: 0.45, vol: 0.072 }, // A4
         ],
       },
       {
-        // Bar 1: E (2nd inversion [B3, E4, G#4], smooth voice leading from C)
+        // Bar 1: E7 (2nd inversion [B3, D4, E4, G#4], bittersweet pull)
         chord: [246.94, 329.63, 415.3],
-        altChord: [246.94, 293.66, 329.63, 415.3], // E7 (2nd inv) color
-        bass1: 103.83, // G#2 (1st inv bass color)
+        altChord: [246.94, 293.66, 329.63, 415.3], // E7 (2nd inv)
+        bass1: 103.83, // G#2
         bass2: 123.47, // B2
         melody: [
-          { beat: 0.0, freq: 622.25, dur: 0.16, vol: 0.065 }, // Eb5 blue-note grace
-          { beat: 0.12, freq: 659.25, dur: 0.65, vol: 0.095 }, // E5
-          { beat: 1.0, freq: 587.33, dur: 0.55, vol: 0.088 }, // D5 (bluesy 7th)
-          { beat: 1 + swing, freq: 493.88, dur: 0.42, vol: 0.08 }, // B4
+          { beat: 0.0, freq: 493.88, dur: 0.9, vol: 0.088 },  // B4
+          { beat: 1.0, freq: 415.3, dur: 0.62, vol: 0.082 },  // G#4
+          { beat: 1 + swing, freq: 392.0, dur: 0.42, vol: 0.072 }, // G4 passing sigh
         ],
       },
       {
-        // Bar 2: F (2nd inversion [C4, F4, A4], +1 semitone voice-leading from E 2nd inv!)
-        chord: [261.63, 349.23, 440.0],
-        altChord: [261.63, 349.23, 440.0],
-        bass1: 110.0,  // A2 (1st inv bass color)
+        // Bar 2: Fmaj7 (2nd inversion [C4, E4, F4, A4] - deep tender nostalgia)
+        chord: [261.63, 329.63, 349.23, 440.0],
+        altChord: [261.63, 329.63, 440.0],
+        bass1: 110.0,  // A2
         bass2: 130.81, // C3
         melody: [
-          { beat: 0.0, freq: 523.25, dur: 0.7, vol: 0.095 }, // C5
-          { beat: swing, freq: 587.33, dur: 0.36, vol: 0.08 }, // D5
-          { beat: 1.0, freq: 698.46, dur: 0.78, vol: 0.095 }, // F5
-          { beat: 1 + swing, freq: 659.25, dur: 0.42, vol: 0.082 }, // E5
+          { beat: 0.0, freq: 440.0, dur: 0.95, vol: 0.088 },  // A4
+          { beat: 1.0, freq: 392.0, dur: 0.55, vol: 0.08 },   // G4
+          { beat: 1 + swing, freq: 349.23, dur: 0.52, vol: 0.078 }, // F4
         ],
       },
       {
-        // Bar 3: G (1st inversion [B3, D4, G4] -> G7 1st inv [B3, F4, G4])
-        chord: [246.94, 293.66, 392.0],
+        // Bar 3: G6 -> G7 (1st inversion [B3, D4, E4, G4] -> [B3, F4, G4])
+        chord: [246.94, 293.66, 329.63, 392.0],
         altChord: [246.94, 349.23, 392.0], // G7 1st inv
         bass1: 123.47, // B2
         bass2: 98.0,   // G2
         melody: [
-          { beat: 0.0, freq: 587.33, dur: 0.7, vol: 0.095 }, // D5
-          { beat: 1.0, freq: 493.88, dur: 0.58, vol: 0.085 }, // B4
-          { beat: 1 + swing, freq: 587.33, dur: 0.4, vol: 0.082 }, // D5
+          { beat: 0.0, freq: 329.63, dur: 0.85, vol: 0.085 }, // E4 (G6 yearning)
+          { beat: 1.0, freq: 293.66, dur: 0.88, vol: 0.08 },  // D4
         ],
       },
       {
-        // Bar 4: C (2nd inversion [G4, C5, E5])
-        chord: [392.0, 523.25, 659.25],
-        altChord: [392.0, 523.25, 659.25],
+        // Bar 4: Cmaj7 (2nd inversion [G4, B4, C5, E5])
+        chord: [392.0, 493.88, 523.25, 659.25],
+        altChord: [392.0, 493.88, 659.25],
         bass1: 130.81, // C3
         bass2: 164.81, // E3
         melody: [
-          { beat: 0.0, freq: 783.99, dur: 0.74, vol: 0.095 }, // G5
-          { beat: swing, freq: 659.25, dur: 0.4, vol: 0.085 }, // E5
-          { beat: 1.0, freq: 622.25, dur: 0.14, vol: 0.06 },  // Eb5 blues slide
-          { beat: 1.1, freq: 659.25, dur: 0.7, vol: 0.09 },   // E5
+          { beat: 0.0, freq: 659.25, dur: 0.88, vol: 0.086 }, // E5
+          { beat: 1.0, freq: 587.33, dur: 0.58, vol: 0.08 },  // D5
+          { beat: 1 + swing, freq: 523.25, dur: 0.5, vol: 0.08 }, // C5
         ],
       },
       {
-        // Bar 5: E (1st inversion [G#4, B4, E5])
+        // Bar 5: E7 (1st inversion [G#4, B4, D5, E5])
         chord: [415.3, 493.88, 659.25],
         altChord: [415.3, 493.88, 587.33],
         bass1: 164.81, // E3
         bass2: 103.83, // G#2
         melody: [
-          { beat: 0.0, freq: 659.25, dur: 0.68, vol: 0.092 }, // E5
-          { beat: swing, freq: 783.99, dur: 0.4, vol: 0.085 }, // G5
-          { beat: 1.0, freq: 830.61, dur: 0.62, vol: 0.09 },  // G#5
-          { beat: 1 + swing, freq: 783.99, dur: 0.42, vol: 0.082 }, // G5
+          { beat: 0.0, freq: 587.33, dur: 0.82, vol: 0.084 }, // D5 (bluesy 7th)
+          { beat: 1.0, freq: 493.88, dur: 0.65, vol: 0.08 },  // B4
+          { beat: 1 + swing, freq: 415.3, dur: 0.45, vol: 0.072 }, // G#4
         ],
       },
       {
-        // Bar 6: F (1st inversion [A4, C5, F5])
-        chord: [440.0, 523.25, 698.46],
+        // Bar 6: Fmaj7 (1st inversion [A4, C5, E5, F5])
+        chord: [440.0, 523.25, 659.25],
         altChord: [440.0, 523.25, 698.46],
         bass1: 174.61, // F3
         bass2: 110.0,  // A2
         melody: [
-          { beat: 0.0, freq: 880.0, dur: 0.74, vol: 0.095 },  // A5
-          { beat: swing, freq: 783.99, dur: 0.38, vol: 0.082 }, // G5
-          { beat: 1.0, freq: 698.46, dur: 0.65, vol: 0.09 },  // F5
-          { beat: 1 + swing, freq: 659.25, dur: 0.4, vol: 0.082 }, // E5
+          { beat: 0.0, freq: 523.25, dur: 0.92, vol: 0.086 }, // C5
+          { beat: 1.0, freq: 493.88, dur: 0.58, vol: 0.08 },  // B4
+          { beat: 1 + swing, freq: 440.0, dur: 0.48, vol: 0.078 }, // A4
         ],
       },
       {
-        // Bar 7: G (2nd inversion [D4, G4, B4] / turnaround)
-        chord: [293.66, 392.0, 493.88],
-        altChord: [349.23, 392.0, 493.88],
+        // Bar 7: G6/Gsus4 (2nd inversion [D4, G4, A4, B4] -> tender turnaround)
+        chord: [293.66, 392.0, 440.0, 493.88],
+        altChord: [293.66, 349.23, 392.0, 493.88],
         bass1: 98.0,   // G2
         bass2: 146.83, // D3
         melody: [
-          { beat: 0.0, freq: 587.33, dur: 0.66, vol: 0.092 }, // D5
-          { beat: swing, freq: 659.25, dur: 0.38, vol: 0.08 }, // E5
-          { beat: 1.0, freq: 587.33, dur: 0.55, vol: 0.085 }, // D5
-          { beat: 1 + swing, freq: 493.88, dur: 0.42, vol: 0.078 }, // B4
+          { beat: 0.0, freq: 440.0, dur: 0.88, vol: 0.084 },  // A4
+          { beat: 1.0, freq: 392.0, dur: 0.92, vol: 0.08 },   // G4
         ],
       },
     ];
@@ -698,18 +689,18 @@ class SoundManager {
       this.playPianoNote(note.freq, barStart + note.beat * beatSec, pedalDur, (note.vol ?? 0.09) * 1.45);
     }
 
-    // Blues Percussion in 2/4 Shuffle
-    this.playBluesKick(barStart, 0.28);
+    // Blues Percussion in 2/4 Shuffle (soft nostalgic heartbeat)
+    this.playBluesKick(barStart, 0.23);
     if (bar % 2 === 1) {
-      this.playBluesKick(barStart + beatSec * (1 + swing), 0.17);
+      this.playBluesKick(barStart + beatSec * (1 + swing), 0.14);
     }
-    this.playBluesSnare(barStart + beatSec, 0.16); // Backbeat on beat 2
+    this.playBluesSnare(barStart + beatSec, 0.13); // Backbeat on beat 2
 
     // Triplet brush shuffle on ride/hi-hat
-    this.playBluesBrushHat(barStart, 0.072, false);
-    this.playBluesBrushHat(barStart + beatSec * swing, 0.056, false);
-    this.playBluesBrushHat(barStart + beatSec, 0.078, false);
-    this.playBluesBrushHat(barStart + beatSec * (1 + swing), 0.06, bar % 4 === 3);
+    this.playBluesBrushHat(barStart, 0.058, false);
+    this.playBluesBrushHat(barStart + beatSec * swing, 0.044, false);
+    this.playBluesBrushHat(barStart + beatSec, 0.062, false);
+    this.playBluesBrushHat(barStart + beatSec * (1 + swing), 0.048, bar % 4 === 3);
 
     // Every 8 bars (bars 8..15 of each 16-bar cycle), add soft lofi saxophone accompaniment
     if (barIndex >= 8) {
@@ -770,7 +761,7 @@ class SoundManager {
     if (this.musicTimer !== null || !loadSave().options.music || this.isBackgrounded) return;
     if (!this.ctx) return;
 
-    const BPM = 55;
+    const BPM = 50;
     const BEAT_SEC = 60 / BPM;
     const BAR_SEC = BEAT_SEC * 2; // 2/4 time signature
 
