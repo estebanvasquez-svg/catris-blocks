@@ -221,15 +221,15 @@ class SoundManager {
     if (!this.ctx || !this.musicGain) return;
     const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
     const dur = Math.max(0.12, duration);
-    const attackEnd = t0 + 0.022;
+    const attackEnd = t0 + 0.028;
     const decayMid = Math.min(t0 + dur - 0.02, Math.max(attackEnd + 0.02, t0 + Math.min(0.45, dur * 0.45)));
 
-    // Warm Rhodes/felt lofi lowpass (keeps warm mids audible on Safari/mobile speakers)
+    // Warm dark-lofi lowpass on piano: removes treble/highs while keeping warm mids
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.Q.setValueAtTime(0.65, t0);
-    filter.frequency.setValueAtTime(Math.min(2400, Math.max(900, freq * 3.2)), t0);
-    filter.frequency.exponentialRampToValueAtTime(Math.max(480, freq * 1.45), t0 + dur);
+    filter.Q.setValueAtTime(0.55, t0);
+    filter.frequency.setValueAtTime(Math.min(1150, Math.max(520, freq * 1.85)), t0);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(320, freq * 1.05), t0 + dur);
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
@@ -237,7 +237,7 @@ class SoundManager {
     env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.68), decayMid);
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-    // Warm Rhodes blend: sine fundamental + soft triangle body + gentle 2nd harmonic
+    // Warm Rhodes/felt blend with minimal upper harmonics
     const osc1 = this.ctx.createOscillator();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(freq, t0);
@@ -246,13 +246,13 @@ class SoundManager {
     osc2.type = 'triangle';
     osc2.frequency.setValueAtTime(freq, t0);
     const g2 = this.ctx.createGain();
-    g2.gain.setValueAtTime(0.28, t0);
+    g2.gain.setValueAtTime(0.12, t0);
 
     const osc3 = this.ctx.createOscillator();
     osc3.type = 'sine';
     osc3.frequency.setValueAtTime(freq * 2, t0);
     const g3 = this.ctx.createGain();
-    g3.gain.setValueAtTime(0.16, t0);
+    g3.gain.setValueAtTime(0.05, t0);
 
     osc1.connect(filter);
     osc2.connect(g2);
