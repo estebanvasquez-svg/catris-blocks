@@ -389,6 +389,115 @@ class SoundManager {
     src.stop(t0 + dur + 0.02);
   }
 
+  private playLofiSaxNote(
+    freq: number,
+    startTime: number,
+    duration: number,
+    volume = 0.085,
+    scoop = false
+  ): void {
+    if (!this.ctx || !this.musicGain) return;
+    const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
+    const dur = Math.max(0.14, duration);
+    const attackEnd = t0 + Math.min(0.055, dur * 0.25);
+    const releaseStart = Math.max(attackEnd + 0.02, t0 + dur - 0.07);
+
+    // Warm lofi lowpass filter (rolls off harsh reed harmonics for a velvety sax)
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.setValueAtTime(1.5, t0);
+    filter.frequency.setValueAtTime(Math.min(1350, freq * 2.6), t0);
+    filter.frequency.linearRampToValueAtTime(Math.min(1050, freq * 2.1), t0 + dur);
+
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.linearRampToValueAtTime(volume, attackEnd);
+    env.gain.setValueAtTime(volume * 0.88, releaseStart);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    // Reed sawtooth + warm triangle body
+    const reed = this.ctx.createOscillator();
+    reed.type = 'sawtooth';
+    if (scoop) {
+      reed.frequency.setValueAtTime(freq * 0.96, t0);
+      reed.frequency.exponentialRampToValueAtTime(freq, t0 + 0.055);
+    } else {
+      reed.frequency.setValueAtTime(freq, t0);
+    }
+
+    const body = this.ctx.createOscillator();
+    body.type = 'triangle';
+    body.frequency.setValueAtTime(freq, t0);
+    const bodyGain = this.ctx.createGain();
+    bodyGain.gain.setValueAtTime(0.45, t0);
+
+    // Gentle lofi vibrato
+    const lfo = this.ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(4.6, t0);
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.setValueAtTime(0, t0);
+    lfoGain.gain.linearRampToValueAtTime(freq * 0.0085, Math.min(t0 + dur * 0.5, t0 + 0.18));
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(reed.frequency);
+    lfoGain.connect(body.frequency);
+
+    reed.connect(filter);
+    body.connect(bodyGain);
+    bodyGain.connect(filter);
+
+    filter.connect(env);
+    env.connect(this.musicGain);
+
+    // Subtle breath air texture
+    const buf = this.getNoiseBuffer();
+    let airSrc: AudioBufferSourceNode | null = null;
+    let airFilter: BiquadFilterNode | null = null;
+    let airGain: GainNode | null = null;
+    if (buf) {
+      airSrc = this.ctx.createBufferSource();
+      airSrc.buffer = buf;
+      airSrc.loop = true;
+      airFilter = this.ctx.createBiquadFilter();
+      airFilter.type = 'bandpass';
+      airFilter.frequency.setValueAtTime(1250, t0);
+      airFilter.Q.setValueAtTime(1.2, t0);
+      airGain = this.ctx.createGain();
+      airGain.gain.setValueAtTime(0.0001, t0);
+      airGain.gain.linearRampToValueAtTime(volume * 0.11, attackEnd);
+      airGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      airSrc.connect(airFilter);
+      airFilter.connect(airGain);
+      airGain.connect(this.musicGain);
+      airSrc.start(t0);
+      airSrc.stop(t0 + dur + 0.02);
+    }
+
+    reed.onended = () => {
+      reed.disconnect();
+      body.disconnect();
+      bodyGain.disconnect();
+      lfo.disconnect();
+      lfoGain.disconnect();
+      filter.disconnect();
+      env.disconnect();
+      if (airSrc && airFilter && airGain) {
+        airSrc.disconnect();
+        airFilter.disconnect();
+        airGain.disconnect();
+      }
+    };
+
+    const stopTime = t0 + dur + 0.03;
+    reed.start(t0);
+    body.start(t0);
+    lfo.start(t0);
+    reed.stop(stopTime);
+    body.stop(stopTime);
+    lfo.stop(stopTime);
+  }
+
   private scheduleThemeBar(barIndex: number, barStart: number, beatSec: number): void {
     // 2/4 time signature at 55 BPM -> 2 beats per bar, swung triplet blues feel (2/3 of beat)
     const bar = barIndex % 8;
@@ -542,6 +651,60 @@ class SoundManager {
     this.playBluesBrushHat(barStart + beatSec * swing, 0.056, false);
     this.playBluesBrushHat(barStart + beatSec, 0.078, false);
     this.playBluesBrushHat(barStart + beatSec * (1 + swing), 0.06, bar % 4 === 3);
+
+    // Every 8 bars (bars 8..15 of each 16-bar cycle), add soft lofi saxophone accompaniment
+    if (barIndex >= 8) {
+      const saxPhrases: Array<Array<{ beat: number; freq: number; dur: number; scoop?: boolean }>> = [
+        [
+          { beat: 0.0, freq: 392.0, dur: 0.85, scoop: true }, // G4
+          { beat: 1.0, freq: 329.63, dur: 0.55 },             // E4
+          { beat: 1 + swing, freq: 392.0, dur: 0.38 },        // G4
+        ],
+        [
+          { beat: 0.0, freq: 415.3, dur: 0.9, scoop: true },  // G#4
+          { beat: 1.0, freq: 493.88, dur: 0.75 },             // B4
+        ],
+        [
+          { beat: 0.0, freq: 523.25, dur: 0.85, scoop: true }, // C5
+          { beat: 1.0, freq: 440.0, dur: 0.55 },              // A4
+          { beat: 1 + swing, freq: 349.23, dur: 0.4 },        // F4
+        ],
+        [
+          { beat: 0.0, freq: 392.0, dur: 0.7 },               // G4
+          { beat: 1.0, freq: 349.23, dur: 0.55 },             // F4
+          { beat: 1 + swing, freq: 293.66, dur: 0.42 },       // D4
+        ],
+        [
+          { beat: 0.0, freq: 329.63, dur: 0.5, scoop: true }, // E4
+          { beat: swing, freq: 392.0, dur: 0.4 },             // G4
+          { beat: 1.0, freq: 523.25, dur: 0.88 },             // C5
+        ],
+        [
+          { beat: 0.0, freq: 493.88, dur: 0.85, scoop: true }, // B4
+          { beat: 1.0, freq: 415.3, dur: 0.55 },              // G#4
+          { beat: 1 + swing, freq: 329.63, dur: 0.42 },       // E4
+        ],
+        [
+          { beat: 0.0, freq: 440.0, dur: 0.8, scoop: true },  // A4
+          { beat: 1.0, freq: 523.25, dur: 0.55 },             // C5
+          { beat: 1 + swing, freq: 587.33, dur: 0.38 },       // D5
+        ],
+        [
+          { beat: 0.0, freq: 493.88, dur: 0.9, scoop: true }, // B4
+          { beat: 1.0, freq: 392.0, dur: 0.85 },              // G4
+        ],
+      ];
+
+      for (const saxNote of saxPhrases[bar]) {
+        this.playLofiSaxNote(
+          saxNote.freq,
+          barStart + saxNote.beat * beatSec,
+          saxNote.dur * beatSec,
+          0.095,
+          saxNote.scoop
+        );
+      }
+    }
   }
 
   public startMusic(): void {
@@ -570,7 +733,7 @@ class SoundManager {
       while (this.nextBarTime < this.ctx.currentTime + scheduleAheadSec) {
         this.scheduleThemeBar(this.currentBar, this.nextBarTime, BEAT_SEC);
         this.nextBarTime += BAR_SEC;
-        this.currentBar = (this.currentBar + 1) % 8;
+        this.currentBar = (this.currentBar + 1) % 16;
       }
     };
 
