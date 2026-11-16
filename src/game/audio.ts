@@ -232,7 +232,7 @@ class SoundManager {
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
     env.gain.linearRampToValueAtTime(volume, attackEnd);
-    env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.45), decayMid);
+    env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.56), decayMid);
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
     // Warm fundamental + soft 2nd & 3rd harmonics for acoustic/electric piano body
@@ -285,6 +285,50 @@ class SoundManager {
     freqs.forEach((f, idx) => {
       this.playPianoNote(f, startTime + idx * 0.014, duration, volume);
     });
+  }
+
+  private playSoftPad(freqs: number[], startTime: number, duration: number, volume = 0.024): void {
+    if (!this.ctx || !this.musicGain) return;
+    const t0 = Math.max(startTime, this.ctx.currentTime + 0.005);
+    const dur = Math.max(0.5, duration);
+    const fadeIn = Math.min(0.48, dur * 0.3);
+    const fadeOutStart = Math.max(t0 + fadeIn + 0.05, t0 + dur - 0.45);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(760, t0);
+    filter.Q.setValueAtTime(0.7, t0);
+
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.linearRampToValueAtTime(volume, t0 + fadeIn);
+    env.gain.setValueAtTime(volume * 0.92, fadeOutStart);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    filter.connect(env);
+    env.connect(this.musicGain);
+
+    const oscs: OscillatorNode[] = [];
+    for (const freq of freqs) {
+      for (const detune of [-5, 5]) {
+        const osc = this.ctx.createOscillator();
+        osc.type = detune < 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, t0);
+        osc.detune.setValueAtTime(detune, t0);
+        osc.connect(filter);
+        osc.start(t0);
+        osc.stop(t0 + dur + 0.03);
+        oscs.push(osc);
+      }
+    }
+
+    if (oscs.length > 0) {
+      oscs[0].onended = () => {
+        for (const o of oscs) o.disconnect();
+        filter.disconnect();
+        env.disconnect();
+      };
+    }
   }
 
   private playBluesKick(startTime: number, volume = 0.22): void {
@@ -626,17 +670,21 @@ class SoundManager {
 
     const data = progression[bar];
 
-    // Piano Left Hand Bass (walking 2/4)
-    this.playPianoNote(data.bass1, barStart, beatSec * 0.92, 0.19);
-    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 0.9, 0.16);
+    // Soft warm pad underneath the piano chord
+    this.playSoftPad(data.chord, barStart, beatSec * 2.15, 0.022);
 
-    // Piano Right Hand Chords (warm downbeat + gentle swung blues comping)
-    this.playPianoChord(data.chord, barStart, beatSec * 0.95, 0.105);
-    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.45, 0.075);
+    // Piano Left Hand Bass (walking 2/4 with subtle sustain pedal)
+    this.playPianoNote(data.bass1, barStart, beatSec * 1.25, 0.19);
+    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 1.05, 0.16);
 
-    // Expressive Blues-Kawaii Piano Melody
+    // Piano Right Hand Chords (sustain pedal across the bar + gentle swung blues comping)
+    this.playPianoChord(data.chord, barStart, beatSec * 1.88, 0.105);
+    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.65, 0.075);
+
+    // Expressive Blues-Kawaii Piano Melody (with sustain pedal tail)
     for (const note of data.melody) {
-      this.playPianoNote(note.freq, barStart + note.beat * beatSec, note.dur * beatSec, (note.vol ?? 0.09) * 1.45);
+      const pedalDur = (note.dur + 0.28) * beatSec;
+      this.playPianoNote(note.freq, barStart + note.beat * beatSec, pedalDur, (note.vol ?? 0.09) * 1.45);
     }
 
     // Blues Percussion in 2/4 Shuffle
