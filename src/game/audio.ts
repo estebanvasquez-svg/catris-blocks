@@ -234,7 +234,7 @@ class SoundManager {
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
     env.gain.linearRampToValueAtTime(volume, attackEnd);
-    env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.68), decayMid);
+    env.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * 0.42), decayMid);
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
     // Warm Rhodes/felt blend with minimal upper harmonics
@@ -312,14 +312,14 @@ class SoundManager {
 
     const oscs: OscillatorNode[] = [];
     for (const freq of freqs) {
-      for (const detune of [-7, 0, 7]) {
+      for (const detune of [-4, 4]) {
         const osc = this.ctx.createOscillator();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t0);
         osc.detune.setValueAtTime(detune, t0);
         osc.connect(filter);
         osc.start(t0);
-        osc.stop(t0 + dur + 0.04);
+        osc.stop(t0 + dur + 0.03);
         oscs.push(osc);
       }
     }
@@ -453,12 +453,12 @@ class SoundManager {
     const attackEnd = t0 + Math.min(0.065, dur * 0.28);
     const releaseStart = Math.max(attackEnd + 0.02, t0 + dur - 0.08);
 
-    // Warm lofi alto-sax lowpass filter (singing alto timbre without harshness)
+    // Warm lofi tenor/normal sax lowpass filter (clean, dry, non-harsh)
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.Q.setValueAtTime(1.3, t0);
-    filter.frequency.setValueAtTime(Math.min(1550, freq * 2.2), t0);
-    filter.frequency.linearRampToValueAtTime(Math.min(1150, freq * 1.7), t0 + dur);
+    filter.Q.setValueAtTime(1.1, t0);
+    filter.frequency.setValueAtTime(Math.min(1100, freq * 2.0), t0);
+    filter.frequency.linearRampToValueAtTime(Math.min(820, freq * 1.55), t0 + dur);
 
     const env = this.ctx.createGain();
     env.gain.setValueAtTime(0.0001, t0);
@@ -672,21 +672,21 @@ class SoundManager {
 
     const data = progression[bar];
 
-    // Lush warm lofi pad underneath the piano chord (more presence + octave root)
-    this.playSoftPad([data.bass1 * 2, ...data.chord], barStart, beatSec * 2.45, 0.042);
+    // Subtle soft pad underneath the piano chord (low volume, clean bar boundary)
+    this.playSoftPad(data.chord.slice(0, 3), barStart, beatSec * 1.95, 0.014);
 
-    // Piano Left Hand Bass (walking 2/4 with heavy sustain pedal)
-    this.playPianoNote(data.bass1, barStart, beatSec * 1.65, 0.21);
-    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 1.45, 0.18);
+    // Piano Left Hand Bass (clean walking 2/4 without mud overlap)
+    this.playPianoNote(data.bass1, barStart, beatSec * 0.95, 0.2);
+    this.playPianoNote(data.bass2, barStart + beatSec, beatSec * 0.9, 0.17);
 
-    // Piano Right Hand Chords (deep sustain pedal across the bar + swung blues comping)
-    this.playPianoChord(data.chord, barStart, beatSec * 2.28, 0.115);
-    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.85, 0.08);
+    // Piano Right Hand Chords (clean sustain within bar, no muddy bleed)
+    this.playPianoChord(data.chord, barStart, beatSec * 1.75, 0.11);
+    this.playPianoChord(data.altChord, barStart + beatSec * (1 + swing), beatSec * 0.42, 0.072);
 
-    // Expressive Blues-Kawaii Piano Melody (with generous sustain pedal tail)
+    // Clean, expressive Piano Melody
     for (const note of data.melody) {
-      const pedalDur = (note.dur + 0.5) * beatSec;
-      this.playPianoNote(note.freq, barStart + note.beat * beatSec, pedalDur, (note.vol ?? 0.09) * 1.45);
+      const cleanDur = (note.dur + 0.14) * beatSec;
+      this.playPianoNote(note.freq, barStart + note.beat * beatSec, cleanDur, (note.vol ?? 0.09) * 1.45);
     }
 
     // Blues Percussion in 2/4 Shuffle (soft nostalgic heartbeat)
@@ -702,54 +702,46 @@ class SoundManager {
     this.playBluesBrushHat(barStart + beatSec, 0.062, false);
     this.playBluesBrushHat(barStart + beatSec * (1 + swing), 0.048, bar % 4 === 3);
 
-    // Every 8 bars (bars 8..15 of each 16-bar cycle), add singing nostalgic Alto Sax accompaniment
+    // Every 8 bars (bars 8..15 of each 16-bar cycle), add normal/tenor lofi saxophone accompaniment
     if (barIndex >= 8) {
       const saxPhrases: Array<Array<{ beat: number; freq: number; dur: number; scoop?: boolean }>> = [
         [
-          // Bar 8 (Cmaj7): singing alto E5 -> B4
-          { beat: 0.0, freq: 659.25, dur: 0.92, scoop: true }, // E5
-          { beat: 1.0, freq: 587.33, dur: 0.55 },              // D5
-          { beat: 1 + swing, freq: 493.88, dur: 0.45 },        // B4
+          { beat: 0.0, freq: 392.0, dur: 0.82, scoop: true }, // G4
+          { beat: 1.0, freq: 329.63, dur: 0.52 },             // E4
+          { beat: 1 + swing, freq: 392.0, dur: 0.36 },        // G4
         ],
         [
-          // Bar 9 (E7): bittersweet G#5 -> E5
-          { beat: 0.0, freq: 830.61, dur: 0.88, scoop: true }, // G#5
-          { beat: 1.0, freq: 659.25, dur: 0.82 },              // E5
+          { beat: 0.0, freq: 415.3, dur: 0.85, scoop: true }, // G#4
+          { beat: 1.0, freq: 493.88, dur: 0.72 },             // B4
         ],
         [
-          // Bar 10 (Fmaj7): nostalgic A5 -> G5 -> E5
-          { beat: 0.0, freq: 880.0, dur: 0.85, scoop: true },  // A5
-          { beat: 1.0, freq: 783.99, dur: 0.55 },              // G5
-          { beat: 1 + swing, freq: 659.25, dur: 0.45 },        // E5
+          { beat: 0.0, freq: 523.25, dur: 0.82, scoop: true }, // C5
+          { beat: 1.0, freq: 440.0, dur: 0.52 },              // A4
+          { beat: 1 + swing, freq: 349.23, dur: 0.38 },       // F4
         ],
         [
-          // Bar 11 (G6/G7): gentle D5 -> B4 -> G4
-          { beat: 0.0, freq: 587.33, dur: 0.8 },               // D5
-          { beat: 1.0, freq: 493.88, dur: 0.55 },              // B4
-          { beat: 1 + swing, freq: 392.0, dur: 0.45 },         // G4
+          { beat: 0.0, freq: 392.0, dur: 0.7 },               // G4
+          { beat: 1.0, freq: 349.23, dur: 0.52 },             // F4
+          { beat: 1 + swing, freq: 293.66, dur: 0.38 },       // D4
         ],
         [
-          // Bar 12 (Cmaj7): warm G4 -> B4 -> E5
-          { beat: 0.0, freq: 392.0, dur: 0.5, scoop: true },   // G4
-          { beat: swing, freq: 493.88, dur: 0.42 },            // B4
-          { beat: 1.0, freq: 659.25, dur: 0.92 },              // E5
+          { beat: 0.0, freq: 329.63, dur: 0.5, scoop: true }, // E4
+          { beat: swing, freq: 392.0, dur: 0.38 },            // G4
+          { beat: 1.0, freq: 523.25, dur: 0.84 },             // C5
         ],
         [
-          // Bar 13 (E7): expressive D5 -> B4 -> G#4
-          { beat: 0.0, freq: 587.33, dur: 0.88, scoop: true }, // D5
-          { beat: 1.0, freq: 493.88, dur: 0.55 },              // B4
-          { beat: 1 + swing, freq: 415.3, dur: 0.45 },         // G#4
+          { beat: 0.0, freq: 493.88, dur: 0.82, scoop: true }, // B4
+          { beat: 1.0, freq: 415.3, dur: 0.52 },              // G#4
+          { beat: 1 + swing, freq: 329.63, dur: 0.38 },       // E4
         ],
         [
-          // Bar 14 (Fmaj7): lyrical C5 -> E5 -> A5
-          { beat: 0.0, freq: 523.25, dur: 0.72, scoop: true }, // C5
-          { beat: 1.0, freq: 659.25, dur: 0.55 },              // E5
-          { beat: 1 + swing, freq: 880.0, dur: 0.45 },         // A5
+          { beat: 0.0, freq: 440.0, dur: 0.78, scoop: true }, // A4
+          { beat: 1.0, freq: 523.25, dur: 0.52 },             // C5
+          { beat: 1 + swing, freq: 587.33, dur: 0.36 },       // D5
         ],
         [
-          // Bar 15 (G6): tender resolution G5 -> D5
-          { beat: 0.0, freq: 783.99, dur: 0.92, scoop: true }, // G5
-          { beat: 1.0, freq: 587.33, dur: 0.88 },              // D5
+          { beat: 0.0, freq: 493.88, dur: 0.85, scoop: true }, // B4
+          { beat: 1.0, freq: 392.0, dur: 0.82 },              // G4
         ],
       ];
 
@@ -758,7 +750,7 @@ class SoundManager {
           saxNote.freq,
           barStart + saxNote.beat * beatSec,
           saxNote.dur * beatSec,
-          0.13,
+          0.105,
           saxNote.scoop
         );
       }
