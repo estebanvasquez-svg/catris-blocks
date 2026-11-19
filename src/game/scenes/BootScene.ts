@@ -11,6 +11,7 @@ export class BootScene extends Phaser.Scene {
       this.load.image(`cat_${color}`, `assets/cats/cat_${color}.png`);
       this.load.image(`cat_${color}_sticker`, `assets/cats/cat_${color}_sticker.png`);
     }
+    this.load.image('cat_room_bg', 'assets/cat_room_bg.jpg');
   }
 
   create(): void {

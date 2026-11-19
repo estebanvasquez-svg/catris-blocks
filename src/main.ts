@@ -16,6 +16,7 @@ import { CatTowerScene } from './game/scenes/CatTowerScene';
 import { MiauHeroScene } from './game/scenes/MiauHeroScene';
 import { FindCatScene } from './game/scenes/FindCatScene';
 import { CatCafeScene } from './game/scenes/CatCafeScene';
+import { CatRoomScene } from './game/scenes/CatRoomScene';
 
 if (Capacitor.isNativePlatform()) {
   void SystemBars.setStyle({ style: SystemBarsStyle.Dark }).catch(() => {});
@@ -93,6 +94,7 @@ const config: Phaser.Types.Core.GameConfig = {
     MiauHeroScene,
     FindCatScene,
     CatCafeScene,
+    CatRoomScene,
   ],
 };
 

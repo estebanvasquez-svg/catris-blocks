@@ -78,18 +78,26 @@ export class MinigamesScene extends Phaser.Scene {
         color: 0xff6b9e,
         hi: 0xffc4d9,
       },
+      {
+        scene: 'CatRoomScene',
+        title: 'HABITACIÓN',
+        desc: 'Explora la sala y salta por el árbol',
+        cat: 'cat_calico_sticker',
+        color: 0x56d896,
+        hi: 0xaaf5cd,
+      },
     ];
 
     games.forEach((g, idx) => {
-      const cy = 195 + idx * 124;
-      drawHudPanel(this, GAME_WIDTH / 2, cy, 392, 104, g.color);
+      const cy = 175 + idx * 104;
+      drawHudPanel(this, GAME_WIDTH / 2, cy, 392, 88, g.color);
 
-      this.add.image(GAME_WIDTH / 2 - 142, cy, g.cat).setScale(0.16);
+      this.add.image(GAME_WIDTH / 2 - 144, cy, g.cat).setScale(0.135);
 
       this.add
-        .text(GAME_WIDTH / 2 - 86, cy - 16, g.title, {
+        .text(GAME_WIDTH / 2 - 90, cy - 15, g.title, {
           fontFamily: 'Fredoka, sans-serif',
-          fontSize: '23px',
+          fontSize: '21px',
           fontStyle: 'bold',
           color: '#ffffff',
           stroke: '#14244b',
@@ -98,9 +106,9 @@ export class MinigamesScene extends Phaser.Scene {
         .setOrigin(0, 0.5);
 
       this.add
-        .text(GAME_WIDTH / 2 - 86, cy + 16, g.desc, {
+        .text(GAME_WIDTH / 2 - 90, cy + 15, g.desc, {
           fontFamily: 'Fredoka, sans-serif',
-          fontSize: '14px',
+          fontSize: '13px',
           color: '#cfe8ff',
         })
         .setOrigin(0, 0.5);
@@ -108,12 +116,12 @@ export class MinigamesScene extends Phaser.Scene {
       createGlossyButton(this, {
         x: GAME_WIDTH / 2 + 132,
         y: cy,
-        width: 92,
-        height: 46,
+        width: 90,
+        height: 42,
         label: 'JUGAR',
         fillColor: g.color,
         topHighlight: g.hi,
-        fontSize: 17,
+        fontSize: 16,
         onClick: () => {
           sound.playClick();
           this.scene.start(g.scene);
