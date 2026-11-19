@@ -301,9 +301,9 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private enhanceLogo(logo: Phaser.GameObjects.Container): void {
-    // Heart & paw flanking "Kawaii Tetris!"
-    const leftHeart = this.add.image(-92, 44, 'deco_heart').setScale(0.19).setAngle(-10);
-    const rightPaw = this.add.image(92, 44, 'deco_paw').setScale(0.19).setAngle(12);
+    // Heart & paw flanking "Kawaii Cat Blocks!"
+    const leftHeart = this.add.image(-112, 44, 'deco_heart').setScale(0.19).setAngle(-10);
+    const rightPaw = this.add.image(112, 44, 'deco_paw').setScale(0.19).setAngle(12);
 
     // Extra sparkles around the ears & letters
     const s1 = this.add.image(-122, -40, 'deco_sparkle').setScale(0.2).setTint(0xffe066);

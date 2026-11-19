@@ -116,7 +116,7 @@ export function createCatrisLogo(
   });
 
   const subtitle = scene.add
-    .text(0, 44, 'Kawaii Tetris!', {
+    .text(0, 44, 'Kawaii Cat Blocks!', {
       fontFamily: 'Fredoka, sans-serif',
       fontSize: '23px',
       fontStyle: 'bold',
